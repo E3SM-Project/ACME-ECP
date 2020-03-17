@@ -1702,7 +1702,8 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
     real(r8) snowhlandavg(pcols),asdiravg(pcols),aldiravg(pcols)
     real(r8) asdifavg(pcols),aldifavg(pcols)
     real(r8) lhfsd(pcols)
-    logical :: use_MAML     ! flag for MAML
+    real(r8) avgfac  
+    logical  use_MAML   ! flag for MAML
 !
 !-----------------------------------------------------------------------
 !
@@ -1714,28 +1715,19 @@ subroutine diag_surf (cam_in, cam_out, ps, trefmxav, trefmnav )
     snowhlandavg = 0.; asdiravg = 0.
     aldiravg = 0.    ; asdifavg = 0.
     aldifavg = 0.    ; lhfsd = 0.
-
+    avgfac = 1._r8/real(num_inst_atm,r8)
     do i = 1,ncol
        do ii = 1,num_inst_atm
-          lhfavg(i) = lhfavg(i)+cam_in%lhf(i,ii)
-          shfavg(i) = shfavg(i)+cam_in%shf(i,ii)
-          wsxavg(i) = wsxavg(i)+cam_in%wsx(i,ii)
-          wsyavg(i) = wsyavg(i)+cam_in%wsy(i,ii)
-          snowhlandavg(i) = snowhlandavg(i)+cam_in%snowhland(i,ii)
-          asdiravg(i) = asdiravg(i)+cam_in%asdir(i,ii)
-          aldiravg(i) = aldiravg(i)+cam_in%aldir(i,ii)
-          asdifavg(i) = asdifavg(i)+cam_in%asdif(i,ii)
-          aldifavg(i) = aldifavg(i)+cam_in%aldif(i,ii)
+          lhfavg(i) = lhfavg(i)+cam_in%lhf(i,ii)*avgfac
+          shfavg(i) = shfavg(i)+cam_in%shf(i,ii)*avgfac
+          wsxavg(i) = wsxavg(i)+cam_in%wsx(i,ii)*avgfac
+          wsyavg(i) = wsyavg(i)+cam_in%wsy(i,ii)*avgfac
+          snowhlandavg(i) = snowhlandavg(i)+cam_in%snowhland(i,ii)*avgfac
+          asdiravg(i) = asdiravg(i)+cam_in%asdir(i,ii)*avgfac
+          aldiravg(i) = aldiravg(i)+cam_in%aldir(i,ii)*avgfac
+          asdifavg(i) = asdifavg(i)+cam_in%asdif(i,ii)*avgfac
+          aldifavg(i) = aldifavg(i)+cam_in%aldif(i,ii)*avgfac
        end do
-       lhfavg(i) = lhfavg(i)/float(num_inst_atm)
-       shfavg(i) = shfavg(i)/float(num_inst_atm)
-       wsxavg(i) = wsxavg(i)/float(num_inst_atm)
-       wsyavg(i) = wsyavg(i)/float(num_inst_atm)
-       snowhlandavg(i) = snowhlandavg(i)/float(num_inst_atm)
-       asdiravg(i) = asdiravg(i)/float(num_inst_atm)
-       aldiravg(i) = aldiravg(i)/float(num_inst_atm)
-       asdifavg(i) = asdifavg(i)/float(num_inst_atm)
-       aldifavg(i) = aldifavg(i)/float(num_inst_atm)
        do ii = 1,num_inst_atm
           lhfsd(i) = (cam_in%lhf(i,ii)-lhfavg(i))**2
        end do

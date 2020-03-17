@@ -3,7 +3,6 @@ module crm_input_module
 #ifdef MODAL_AERO
    use modal_aero_data, only: ntot_amode
 #endif
-   use seq_comm_mct,       only : num_inst_atm
    use openacc_utils
    implicit none
    private
@@ -24,13 +23,14 @@ module crm_input_module
       real(crm_rknd), allocatable :: ul(:,:)             ! Global grid u (m/s)
       real(crm_rknd), allocatable :: vl(:,:)             ! Global grid v (m/s)
       real(crm_rknd), allocatable :: ocnfrac(:)          ! area fraction of the ocean
-      real(crm_rknd), allocatable :: tau00  (:,:)          ! large-scale surface stress (N/m2)
       real(crm_rknd), allocatable :: wndls  (:)          ! large-scale surface wind (m/s)
-      real(crm_rknd), allocatable :: bflxls (:,:)          ! large-scale surface buoyancy flux (K m/s)
-      real(crm_rknd), allocatable :: fluxu00(:,:)          ! surface momenent fluxes [N/m2]
-      real(crm_rknd), allocatable :: fluxv00(:,:)          ! surface momenent fluxes [N/m2]
-      real(crm_rknd), allocatable :: fluxt00(:,:)          ! surface sensible heat fluxes [K Kg/ (m2 s)]
-      real(crm_rknd), allocatable :: fluxq00(:,:)          ! surface latent heat fluxes [ kg/(m2 s)]
+      real(crm_rknd), allocatable :: ts(:,:,:)               ! grid surface temperature (K)
+      real(crm_rknd), allocatable :: tau00  (:,:,:)          ! large-scale surface stress (N/m2)
+      real(crm_rknd), allocatable :: bflxls (:,:,:)          ! large-scale surface buoyancy flux (K m/s)
+      real(crm_rknd), allocatable :: fluxu00(:,:,:)          ! surface momenent fluxes [N/m2]
+      real(crm_rknd), allocatable :: fluxv00(:,:,:)          ! surface momenent fluxes [N/m2]
+      real(crm_rknd), allocatable :: fluxt00(:,:,:)          ! surface sensible heat fluxes [K Kg/ (m2 s)]
+      real(crm_rknd), allocatable :: fluxq00(:,:,:)          ! surface latent heat fluxes [ kg/(m2 s)]
 #if defined( m2005 ) && defined( MODAL_AERO )
       real(crm_rknd), allocatable :: naermod (:,:,:)     ! Aerosol number concentration [/m3]
       real(crm_rknd), allocatable :: vaerosol(:,:,:)     ! aerosol volume concentration [m3/m3]
@@ -52,6 +52,7 @@ contains
    !------------------------------------------------------------------------------------------------
    ! Type-bound procedures for crm_input_type
    subroutine crm_input_initialize(this, ncrms, nlev)
+      use grid, only: nx, ny
       class(crm_input_type), intent(inout) :: this
       integer, intent(in) :: ncrms, nlev
       
@@ -70,15 +71,17 @@ contains
       if (.not. allocated(this%vl))       allocate(this%vl(ncrms,nlev))
       if (.not. allocated(this%ocnfrac))  allocate(this%ocnfrac(ncrms))
       if (.not. allocated(this%wndls))    allocate(this%wndls(ncrms))
-      ! Modification for the multi-instance MMF functionality. Passing surface
+      ! [lee1046]Modification for the multi-instance MMF functionality. Passing surface
       ! fluxes directly to CRM as a lower boundary condition to trigger
       ! turbulence
-      if (.not. allocated(this%bflxls))   allocate(this%bflxls(ncrms,num_inst_atm))
-      if (.not. allocated(this%fluxt00))  allocate(this%fluxt00(ncrms,num_inst_atm))
-      if (.not. allocated(this%fluxq00))  allocate(this%fluxq00(ncrms,num_inst_atm))
-      if (.not. allocated(this%tau00))    allocate(this%tau00(ncrms,num_inst_atm))
-      if (.not. allocated(this%fluxu00))  allocate(this%fluxu00(ncrms,num_inst_atm))
-      if (.not. allocated(this%fluxv00))  allocate(this%fluxv00(ncrms,num_inst_atm))
+      if (.not. allocated(this%ts))       allocate(this%ts(ncrms,nx,ny))
+      if (.not. allocated(this%bflxls))   allocate(this%bflxls(ncrms,nx,ny))
+      if (.not. allocated(this%fluxt00))  allocate(this%fluxt00(ncrms,nx,ny))
+      if (.not. allocated(this%fluxq00))  allocate(this%fluxq00(ncrms,nx,ny))
+      if (.not. allocated(this%tau00))    allocate(this%tau00(ncrms,nx,ny)
+      if (.not. allocated(this%fluxu00))  allocate(this%fluxu00(ncrms,nx,ny))
+      if (.not. allocated(this%fluxv00))  allocate(this%fluxv00(ncrms,nx,ny))
+      ! [lee1046]
 
       call prefetch(this%zmid)
       call prefetch(this%zint)
@@ -97,6 +100,7 @@ contains
       call prefetch(this%tau00)
       call prefetch(this%wndls)
       call prefetch(this%bflxls)
+      call prefetch(this%ts)
       call prefetch(this%fluxu00)
       call prefetch(this%fluxv00)
       call prefetch(this%fluxt00)
@@ -132,6 +136,7 @@ contains
       this%vl = 0
       this%ocnfrac = 0
       this%tau00   = 0
+      this%ts      = 0
       this%wndls   = 0
       this%bflxls  = 0
       this%fluxu00 = 0
@@ -169,6 +174,7 @@ contains
 
       deallocate(this%ocnfrac)
       deallocate(this%tau00)
+      deallocate(this%ts)
       deallocate(this%wndls)
       deallocate(this%bflxls)
       deallocate(this%fluxu00)

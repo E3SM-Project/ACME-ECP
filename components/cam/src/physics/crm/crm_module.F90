@@ -114,10 +114,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(r8), intent(  out) :: accre_enhan         (ncrms,crm_nx, crm_ny, crm_nz)
     real(r8), intent(  out) :: qclvar              (ncrms,crm_nx, crm_ny, crm_nz)
 #endif /* CLUBB_CRM */
-#ifdef MAML
     real(r8), intent(inout) :: crm_pcp(ncrms, crm_nx,crm_ny)  ! CRM precip rate (m/s)
     real(r8), intent(inout) :: crm_snw(ncrms,crm_nx,crm_ny) ! CRM snow rate (m/s)
-#endif
     type(crm_ecpp_output_type),intent(inout) :: crm_ecpp_output
     type(crm_output_type), target,     intent(inout) :: crm_output
 
@@ -135,10 +133,14 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     real(crm_rknd)  :: tmp1, tmp2, tmp
     real(crm_rknd)  :: u2z,v2z,w2z
     integer         :: i,j,k,l,ptop,nn,icyc,icrm
+    ![lee1046]
+    integer         :: imi   ! index for multi-instance
+    real(crm_rknd), allocatable :: z0_loc (:,:,:)  ! surface roughness length at CRM-resolution level
+    ![lee1046]
     integer         :: kx
     real(crm_rknd)  :: qsat, omg
     real(crm_rknd), allocatable  :: colprec(:), colprecs(:)
-    real(crm_rknd), allocatable  :: ustar(:,:), bflx(:,:), wnd(:)
+    real(crm_rknd), allocatable  :: ustar(:,:,:), bflx(:,:,:), wnd(:)
 
     real(r8)      , allocatable  :: qtot (:,:)    ! Total water for water conservation check
 
@@ -151,6 +153,10 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
     integer        :: i_rad
     integer        :: j_rad
     logical :: crm_accel_ceaseflag   ! indicates if accelerate_crm needs to be aborted for remainder of crm call
+    ![lee1046] 
+    integer :: YESV     ! Do not zero-out v-wind for MAML.
+                        ! v-wind is needed for multi-instance functionality to get surface drag
+    ![lee1046] 
 
     !!! Arrays
     real(crm_rknd), allocatable :: t00(:,:)
@@ -218,8 +224,9 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   allocate( dd_crm (ncrms,plev)   )
   allocate( mui_crm(ncrms,plev+1) )
   allocate( mdi_crm(ncrms,plev+1) )
-  allocate( ustar(ncrms,nx) )
-  allocate( bflx(ncrms,nx) )
+  allocate( z0_loc(ncrms,nx,ny) )
+  allocate( ustar(ncrms,nx,ny) )
+  allocate( bflx(ncrms,nx, ny) )
   allocate( wnd(ncrms) )
   allocate( qtot (ncrms,20) )
   allocate( colprec (ncrms) )
@@ -244,6 +251,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   call prefetch( dd_crm   ) 
   call prefetch( mui_crm  ) 
   call prefetch( mdi_crm  ) 
+  call prefetch( z0_loc    ) 
   call prefetch( ustar    ) 
   call prefetch( bflx     ) 
   call prefetch( wnd      ) 
@@ -307,7 +315,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   crm_rad%ns = 0.0
 #endif /* m2005 */
   do icrm = 1 , ncrms
-    bflx(icrm) = crm_input%bflxls(icrm)
+
     wnd (icrm) = crm_input%wndls (icrm)
   enddo
 
@@ -315,6 +323,20 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   call task_init ()
   call setparm()
+
+  ![lee1046]
+  YESV = YES3D
+#if define (MAML) || defined(MAML1)
+  YESV = 1  ! do not zero-out vwind for CRM 
+  !--------------------------
+  ! lee1046 - sanity check for MAML
+  if(num_inst_atm.ne.crm_nx .or. crm_ny.ne.1) then
+    write(0,*) "For MMF-MAML, CRM must be 2D (crm_ny=1) and a number of instances for LAND, ATM and ICE &
+                must be equal to crm_nx"
+    call endrun('crm main')
+  end if   
+#endif
+  ![lee1046]
 
   do icrm = 1 , ncrms
     fcor(icrm)= 4*pi/86400.*sin(latitude0(icrm)*pi/180.)
@@ -382,12 +404,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       do i = 1 , nx
         do icrm = 1 , ncrms
           u   (icrm,i,j,k) = crm_state_u_wind     (icrm,i,j,k)
-#ifdef MAML
-          !open the crm v component
-          v   (icrm,i,j,k) = crm_state_v_wind     (icrm,i,j,k)
-#else       
-          v   (icrm,i,j,k) = crm_state_v_wind     (icrm,i,j,k)*YES3D
-#endif
+          v   (icrm,i,j,k) = crm_state_v_wind     (icrm,i,j,k)*YESV
           w   (icrm,i,j,k) = crm_state_w_wind     (icrm,i,j,k)
           tabs(icrm,i,j,k) = crm_state_temperature(icrm,i,j,k)
         enddo
@@ -403,12 +420,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
         do i=1,nx
           do icrm=1,ncrms
             u(icrm,i,j,k) = min( umax, max(-umax,u(icrm,i,j,k)) )
-#ifdef MAML
-            !open the crm v component
-            v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) ) 
-#else     
-            v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) )*YES3D
-#endif
+            v(icrm,i,j,k) = min( umax, max(-umax,v(icrm,i,j,k)) )*YESV
           enddo
         enddo
       enddo
@@ -562,12 +574,8 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       tke0 (icrm,k) = tke0 (icrm,k) * factor_xy
       l = plev-k+1
       uln  (icrm,l) = min( umax, max(-umax,crm_input%ul(icrm,l)) )
-#ifdef MAML
-      !open the crm v component
       vln  (icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )
-#else
-      vln  (icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YES3D
-#endif
+      vln  (icrm,l) = min( umax, max(-umax,crm_input%vl(icrm,l)) )*YESV
       ttend(icrm,k) = (crm_input%tl(icrm,l)+gamaz(icrm,k)- fac_cond*(crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l))-fac_fus*crm_input%qiil(icrm,l)-t00(icrm,k))*idt_gl
       qtend(icrm,k) = (crm_input%ql(icrm,l)+crm_input%qccl(icrm,l)+crm_input%qiil(icrm,l)-q0(icrm,k))*idt_gl
       utend(icrm,k) = (uln(icrm,l)-u0(icrm,k))*idt_gl
@@ -583,14 +591,40 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
   do icrm = 1 , ncrms
     uhl(icrm) = u0(icrm,1)
     vhl(icrm) = v0(icrm,1)
-    ! estimate roughness length assuming logarithmic profile of velocity near the surface:
-    ustar(icrm) = sqrt(crm_input%tau00(icrm)/rho(icrm,1))
-    z0(icrm) = z0_est(z(icrm,1),bflx(icrm),wnd(icrm),ustar(icrm))
-    z0(icrm) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0(icrm)))
     crm_output%timing_factor(icrm) = 0.
     crm_output%prectend (icrm)=colprec (icrm)
     crm_output%precstend(icrm)=colprecs(icrm)
   enddo
+  
+  !$acc parallel loop collapse(2) async(asyncid)
+  ! estimate roughness length assuming logarithmic profile of velocity near the surface:
+  ![lee1046] Adjusted for CRM-resoltuion 
+  do j = 1, ny
+    do i = 1, nx
+      do icrm = 1, ncrms
+        bflx  (icrm,i,j) = crm_input%bflxls(icrm,i,j)
+        ustar (icrm,i,j) = sqrt(crm_input%tau00(icrm,i,j)/rho(icrm,1))
+        z0_loc(icrm,i,j) = z0_est(z(icrm,1),bflx(icrm,i,j),wnd(icrm),ustar(icrm,i,j))
+        z0_loc(icrm,i,j) = max(real(0.00001,crm_rknd),min(real(1.,crm_rknd),z0_loc(icrm,i,j)))
+      end do ! icrm = 1, ncrms
+    end do ! i = 1, nx
+  end do ! j = 1, ny  
+![lee1046]
+#if defined( SP_CRM_SFC_FLUX )
+  !$acc parallel loop collapse(3) async(asyncid)
+  do j = 1, ny
+    do i = 1, nx
+      do icrm = 1, ncrms
+      ! fluxbu(icrm,i,j) = crm_input%fluxu00(icrm,i,j)/rhow(1)
+      ! fluxbv(icrm,i,j) = crm_input%fluxv00(icrm,i,j)/rhow(1)
+        fluxbt  (icrm,i,j) = crm_input%fluxt00(icrm,i,j)/rhow(1)
+        fluxbq  (icrm,i,j) = crm_input%fluxq00(icrm,i,j)/rhow(1)
+        t_sfc_xy(icrm,i,j) = crm_input%ts(icrm,i,j)
+      end do ! icrm = 1, ncrms
+    end do ! i = 1,nx
+  end do ! j = 1, ny  
+#endif /* SP_CRM_SFC_FLUX */
+![lee1046]
 
 !---------------------------------------------------
 #ifdef m2005
@@ -690,22 +724,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       call endrun('crm main')
     end if
   enddo
-    !--------------------------
-    ! lee1046 - sanity check for MAML
-    if(num_inst_atm.ne.crm_nx .or. crm_ny.ne.1) then
-       write(0,*) "For MMF-MAML, CRM must be 2D (crm_ny=1) and a number of instances for LAND, ATM and ICE &
-                   must be equal to crm_nx"
-       call endrun('crm main')
-    end if   
-
-#ifdef MAML1
-  if(crm_nx_rad.NE.crm_nx .or. crm_ny_rad.NE.crm_ny) then 
-     write(0,*) "crm_nx_rad and crm_ny_rad have to be equal to crm_nx and crm_ny in the MAML configuration"
-     call endrun('crm main')
-  end if
-#endif
-    
-
 
 #ifdef ECPP
   call ecpp_crm_init(ncrms,dt_gl)

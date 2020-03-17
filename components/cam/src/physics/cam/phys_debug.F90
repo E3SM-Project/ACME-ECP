@@ -17,7 +17,9 @@ use ppgrid,          only: pcols, pver, pverp
 use physics_types,   only: physics_state, physics_ptend
 use camsrfexch,      only: cam_in_t     
 use cam_logfile,     only: iulog
-
+![lee1046]
+use seq_comm_mct,    only: num_inst_atm
+![lee1046]
 implicit none
 private
 save
@@ -196,13 +198,12 @@ subroutine phys_debug_flux1(lchnk, srfflx, lhflx, shflx, taux, tauy, qflx, &
    real(r8),           intent(in) :: tauy_res(:)    ! y momentum flux
    real(r8),           intent(in) :: qflx_res(:)    ! water vapor heat flux
 
-   integer :: icol
+   integer :: icol, jj
    !-----------------------------------------------------------------------------
 
    icol = phys_debug_col(lchnk) 
    if (icol > 0) then
 
-#ifdef MAML
       write(iulog,*) ' b flux_tweak called, lhflx, oldlhflx ', &
           srfflx%lhf(icol,:), lhflx(icol)
       write(iulog,*) ' sfmodel fluxes lhf, shf, taux, tauy, q: ', &

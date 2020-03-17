@@ -183,11 +183,11 @@ subroutine crm_physics_register()
 
   ! ACLDY_CEN has to be global in the physcal buffer to be saved in the restart file??
   call pbuf_add_field('ACLDY_CEN','global', dtype_r8, (/pcols,pver/), idx) ! total (all sub-classes) cloudy fractional area in previous time step 
-#ifdef MAML
+  ![lee1046]
   !adding new variables for passing CRM-scale precipition/snow into CLM. Added new variables
   call pbuf_add_field('CRM_PCP',     'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny/),                crm_pcp_idx)
   call pbuf_add_field('CRM_SNW',     'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny/),                crm_snw_idx)
-#endif
+  ![lee1046]
   ! CRM orientation angle needs to persist for MAML (to pass crm info to coupler) and SP_ORIENT_RAND
   call pbuf_add_field('CRM_ANGLE', 'global', dtype_r8, (/pcols/), idx)
 
@@ -686,14 +686,14 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    type(crm_rad_type)    :: crm_rad
    type(crm_input_type)  :: crm_input
    type(crm_output_type) :: crm_output
-#ifdef MAML
+   ![lee1046]
    real(r8), pointer, dimension(:,:,:)   :: crm_pcp
    real(r8), pointer, dimension(:,:,:)   :: crm_snw
-   real(r8) :: factor_xy
+#ifdef MAML1
    real(r8) :: tau00_avg, bflxls_avg, fluxu00_avg, fluxv00_avg 
    real(r8) :: fluxt00_avg, fluxq00_avg 
-   factor_xy = 1._r8/dble(crm_nx*crm_ny)
 #endif
+   ![lee1046]
 
 #if defined( SP_ORIENT_RAND )
    real(crm_rknd) :: unif_rand1           ! uniform random number 
@@ -881,10 +881,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    itim = pbuf_old_tim_idx()
    ifld = pbuf_get_index('CLD')
    call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim/), kount=(/pcols,pver,1/) )
-#ifdef MAML
+   ![lee1046]
    call pbuf_get_field (pbuf, crm_pcp_idx, crm_pcp)
    call pbuf_get_field (pbuf, crm_snw_idx, crm_snw)
-#endif
+   ![lee1046]
 
    !------------------------------------------------------------------------------------------------
    !------------------------------------------------------------------------------------------------
@@ -947,10 +947,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #endif
          end do
       end do
-#ifdef MAML
+      ![lee1046]
       crm_pcp(:,:,:) = 0.
       crm_snw(:,:,:) = 0.
-#endif
+      ![lee1046]
 
 ! use radiation from grid-cell mean radctl on first time step
       cld(:,:) = 0.
@@ -982,10 +982,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       ptend%q(:,:,ixcldice) = 0.
       ptend%s(:,:) = 0. ! necessary?
       cwp    = 0.
-#ifdef MAML
+      ![lee1046]
       crm_pcp = 0.
       crm_snw = 0.
-#endif
+      ![lee1046]
 
       do m=1,crm_nz
          k = pver-m+1
@@ -1047,21 +1047,59 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       crm_input%ul(1:ncol,1:pver) = state%u(1:ncol,1:pver)
       crm_input%vl(1:ncol,1:pver) = state%v(1:ncol,1:pver)
       crm_input%ocnfrac(1:ncol) = cam_in%ocnfrac(1:ncol)
+![lee1046]
+#ifdef MAML1
       do i = 1,ncol
-         ! [lee1046] num_inst_atm = crm_nx for MAML
-         !           num_inst_atm = 1 Otherwise
-         do ii = 1, num_inst_atm 
-            crm_input%tau00(i,ii) = sqrt(cam_in%wsx(i,ii)**2 + cam_in%wsy(i,ii)**2)
-            ! [lee1046] when Buoyancy Flux (bflxls) is determined from shf and lhf
-            ! Should state%t  be replaced by CRM temperature?
-            crm_input%bflxls(i,ii) = cam_in%shf(i,ii)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i,ii)/latvap
-            crm_input%fluxu00(i,ii) = cam_in%wsx(i,ii)     !N/m2
-            crm_input%fluxv00(i,ii) = cam_in%wsy(i,ii)     !N/m2
-            crm_input%fluxt00(i,ii) = cam_in%shf(i,ii)/cpair  ! K Kg/ (m2 s)
-            crm_input%fluxq00(i,ii) = cam_in%lhf(i,ii)/latvap ! Kg/(m2 s)
-         end do
-         crm_input%wndls(i) = sqrt(state%u(i,pver)**2 + state%v(i,pver)**2)
-      end do
+         ! Surface fluxes are averaged over num_inst_atm
+         tau00_avg =0._r8
+         bflxls_avg =0._r8
+         fluxu00_avg =0._r8
+         fluxv00_avg =0._r8
+         fluxt00_avg =0._r8
+         fluxq00_avg =0._r8
+         do ii = 1, crm_nx*crm_ny
+            !seems none of variables below is used, so I don't use the CRM-level
+            !input. Later on, they can be changed if needed
+            tau00_avg = tau00_avg + sqrt(cam_in%wsx(i,ii)**2 + cam_in%wsy(i,ii)**2)
+            bflxls_avg = bflxls_avg + cam_in%shf(i,ii)/cpair + 0.61*state%t(i,pver)*cam_in%lhf(i,ii)/latvap
+            fluxu00_avg = fluxu00_avg + cam_in%wsx(i,ii)     !N/m2
+            fluxv00_avg = fluxv00_avg + cam_in%wsy(i,ii)     !N/m2
+            fluxt00_avg = fluxt00_avg + cam_in%shf(i,ii)/cpair  ! K Kg/ (m2 s)
+            fluxq00_avg = fluxq00_avg + cam_in%lhf(i,ii)/latvap ! Kg/(m2 s)
+         end do ! ii = 1,crm_nx*crm_ny
+         ![lee1046] Distribute averaged fluxes homogeneously to crm_input.
+         ! This change is for the dimension change in crm_input fluxes
+         crm_input%tau00(i,:,:) = tau00_avg*factor_xy
+         crm_input%bflxls(i,:,:) = bflxls_avg*factor_xy
+         crm_input%fluxu00(i,:,:) = fluxu00_avg*factor_xy     !N/m2
+         crm_input%fluxv00(i,:,:) = fluxv00_avg*factor_xy     !N/m2
+         crm_input%fluxt00(i,:,:) = fluxt00_avg*factor_xy  ! K Kg/ (m2 s)
+         crm_input%fluxq00(i,:,:) = fluxq00_avg*factor_xy ! Kg/(m2 s)
+         crm_input%ts     (i,:,:) = SUM(cam_in%ts(i,:))*factor_xy
+         ![lee1046]
+      end do ! i = 1,ncol   
+#else
+      ! [lee1046] num_inst_atm = crm_nx for MAML
+      !           num_inst_atm = 1 Otherwise
+      ! 2-way coupling between CRM atmosphere and Land for MAML
+      ! For non-MAML (if not defined(SP_CRM_SFC_FLUX)), below crm_input fluxes and surface temperature 
+      ! will not be used inside CRM
+      do j = 1, crm_ny
+         do i = 1, crm_nx
+            ii = MIN(num_inst_atm, crm_nx) ! [TODO] ii can be changed accordingly when num_inst_atm < crm_nx
+            crm_input%tau00  (1:ncol,i,j)  = sqrt(cam_in%wsx(1:ncol,ii)**2 + cam_in%wsy(1:ncol,ii)**2)
+            crm_input%bflxls (1:ncol,i,j) = cam_in%shf(1:ncol,ii)/cpair + &
+                                          0.61*state%t(1:ncol,pver)*cam_in%lhf(1:ncol,ii)/latvap
+            crm_input%fluxu00(1:ncol,i,j) = cam_in%wsx(1:ncol,ii)     !N/m2
+            crm_input%fluxv00(1:ncol,i,j) = cam_in%wsy(1:ncol,ii)     !N/m2
+            crm_input%fluxt00(1:ncol,i,j) = cam_in%shf(1:ncol,ii)/cpair  ! K Kg/ (m2 s)
+            crm_input%fluxq00(1:ncol,i,j) = cam_in%lhf(1:ncol,ii)/latvap ! Kg/(m2 s)
+            crm_input%ts     (1:ncol,i,j) = cam_in%ts (1:ncol,ii)
+         end do ! i = 1,crm_nx
+      end do j = 1, crm_ny   
+#endif
+      crm_input%wndls(1:ncol) = sqrt(state%u(1:ncol,pver)**2 + state%v(1:ncol,pver)**2)
+![lee1046]
 #if (defined m2005 && defined MODAL_AERO)
       ! Set aerosol
       do i = 1,ncol
@@ -1115,9 +1153,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
                 clubb_tkh(:ncol, :, :, :),   relvar(:ncol,:, :, :),       &
                 accre_enhan(:ncol, :, :, :), qclvar(:ncol, :, :, :),      &
 #endif /* CLUBB_CRM */
-#ifdef MAML
+                ![lee1046]
                 crm_pcp(:ncol,:,:),     crm_snw(:ncol,:,:),               &
-#endif
+                ![lee1046]
                 crm_ecpp_output, crm_output )
       call t_stopf('crm_call')
 
@@ -1193,7 +1231,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       call outfld('CRM_PREC',crm_output%prec_crm       ,pcols   ,lchnk   )
       call outfld('CRM_TK ', crm_output%tk(:, :, :, :)  ,pcols   ,lchnk   )  
       call outfld('CRM_TKH', crm_output%tkh(:, :, :, :)  ,pcols   ,lchnk   ) 
-#ifdef MAML
+#ifdef MAML1
        call outfld('CRM_SHF ', cam_in%shf ,pcols ,lchnk)
        call outfld('CRM_LHF ', cam_in%lhf ,pcols ,lchnk)
        call outfld('CRM_SNOW', crm_snw    ,pcols ,lchnk)

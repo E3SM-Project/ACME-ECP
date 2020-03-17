@@ -24,7 +24,12 @@ module atm_comp_mct
   use cam_cpl_indices
   use atm_import_export
   use cam_comp
+  
+#if defined(MAML) || defined(MAML1)
+  ![lee1046]
   use cam_instance     , only: cam_instance_init, inst_index, inst_suffix
+  use seq_comm_mct, only : num_inst_atm
+#endif
   use cam_control_mod  , only: nsrest, aqua_planet, eccen, obliqr, lambm0, mvelpp
   use radiation        , only: radiation_do, radiation_nextsw_cday
   use phys_grid        , only: get_ncols_p, ngcols, get_gcol_p, get_rlat_all_p, &
@@ -52,9 +57,6 @@ module atm_comp_mct
   use co2_cycle        , only: co2_readFlux_ocn, co2_readFlux_fuel
   use runtime_opts     , only: read_namelist
   use scamMod          , only: single_column,scmlat,scmlon
-#ifdef MAML 
-  use seq_comm_mct, only : num_inst_atm
-#endif 
 !
 ! !PUBLIC TYPES:
   implicit none
@@ -98,9 +100,9 @@ module atm_comp_mct
 
   integer,                 pointer :: dof(:) ! needed for pio_init decomp for restarts
   type(seq_infodata_type), pointer :: infodata
-#ifdef MAML
+#if defined(MAML) || defined(MAML1)
   !sequence_instances stands for running instances sequentially
-  !In the MAML, we don't want to run the mult-instances of atm concurrently. Instead, we want to
+  !In MAML, we don't want to run the mult-instances of atm concurrently. Instead, we want to
   !run them sequentially. Becasue ATM already has multiple CRM columns. We need to run 1 instance only,
   !but we still need multi-instances to do the atm-land flux exchange. 
   logical :: sequence_instances = .false.
@@ -156,11 +158,11 @@ CONTAINS
     logical :: perpetual_run    ! If in perpetual mode or not
     integer :: perpetual_ymd    ! Perpetual date (YYYYMMDD)
     integer :: shrlogunit,shrloglev ! old values
-#ifdef MAML 
-    logical :: first_time = .false.
-#else
+!#ifdef MAML [lee1046] unnecessary 
+!    logical :: first_time = .false.
+!#else
     logical :: first_time = .true.
-#endif
+!#endif
     character(len=SHR_KIND_CS) :: calendar      ! Calendar type
     character(len=SHR_KIND_CS) :: starttype     ! infodata start type
     character(len=8)           :: c_inst_index  ! instance number
@@ -187,11 +189,16 @@ CONTAINS
 
     call seq_cdata_setptrs(cdata_a, ID=ATMID, mpicom=mpicom_atm, &
          gsMap=gsMap_atm, dom=dom_a, infodata=infodata)
-#ifdef MAML 
+
+#if defined(MAML) || defined(MAML1)
     call seq_infodata_getData(infodata,atm_phase=atm_phase)
     call cam_instance_init(ATMID)
-
+    ![lee1046]
+    write(*,*) '### atm_init_mct: ATMID = ',ATMID
+    write(*,*) '### atm_init_mct: inst_index = ',inst_index
+    ![lee1046]
     !--- auto detect sequence_instances based on calling this more than once in phase 1 ---
+    write(*,*) '### atm_init_mct: atm_phase,first_call,sequence_instances = ',atm_phase,first_call,sequence_instances
     if (atm_phase == 1 .and. .not.first_call .and. .not.sequence_instances) then
        sequence_instances = .true.
        write(6,*) "Setting sequence_instances to true"
@@ -420,7 +427,7 @@ CONTAINS
        call shr_file_setLogLevel(shrloglev)
 
        first_time = .false.
-    else
+    else ! if(first_time)
        
        ! For initial run, run cam radiation/clouds and return
        ! For restart run, read restart x2a_a

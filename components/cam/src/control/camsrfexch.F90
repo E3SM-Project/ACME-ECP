@@ -44,7 +44,10 @@ module camsrfexch
   type cam_out_t 
      integer  :: lchnk               ! chunk index
      integer  :: ncol                ! number of columns in chunk
-      
+   
+     ![lee1046] Surface interaface fields: From ATM To LND/ICE models. 
+     ! Change: 1D (pcols) -> 2D (pcols, num_inst_atm) 
+     ! to allow Multi-Instance MMF functionality (for instance MMF-MAML)
      real(r8) :: tbot(pcols,num_inst_atm)         ! bottom level temperature
      real(r8) :: thbot(pcols,num_inst_atm)        ! bottom level potential temperature 
      real(r8) :: zbot(pcols,num_inst_atm)         ! bottom level height above surface
@@ -63,6 +66,7 @@ module camsrfexch
      real(r8) :: solsd(pcols,num_inst_atm)        ! solar downward VIS diffuse (W/m2)
      real(r8) :: netsw(pcols,num_inst_atm)        ! Surface solar, net absorbed [W/m2]
      real(r8) :: flwds(pcols,num_inst_atm)        ! longwave down [W/m2]
+     ![lee1046]
      
      real(r8) :: co2prog(pcols)      ! prognostic co2
      real(r8) :: co2diag(pcols)      ! diagnostic co2
@@ -91,7 +95,9 @@ module camsrfexch
      integer  :: lchnk                   ! chunk index
      integer  :: ncol                    ! number of active columns
      
-     !modifying the CLM-input vars to reflect the added CRM columns
+     ![lee1046] Surface interaface fields: From LND/ICE To ATM model. 
+     ! Change: 1D (pcols) -> 2D (pcols, num_inst_atm) 
+     ! to allow Multi-Instance MMF functionality (for instance MMF-MAML)
      real(r8) :: asdir(pcols,num_inst_atm)            ! albedo: shortwave, direct
      real(r8) :: asdif(pcols,num_inst_atm)            ! albedo: shortwave, diffuse
      real(r8) :: aldir(pcols,num_inst_atm)            ! albedo: longwave, direct
@@ -102,7 +108,7 @@ module camsrfexch
      real(r8) :: wsx(pcols,num_inst_atm)              ! surface u-stress (N)
      real(r8) :: wsy(pcols,num_inst_atm)              ! surface v-stress (N)
      real(r8) :: snowhland(pcols,num_inst_atm)        ! snow depth (liquid water equivalent) over land 
-     !modifying the CLM-input vars to reflect the added CRM columns
+     ![lee1046]
      
      real(r8) :: tref(pcols)             ! ref height surface air temp
      real(r8) :: qref(pcols)             ! ref height specific humidity 
@@ -438,9 +444,8 @@ subroutine cam_export(state,cam_out,pbuf)
    integer :: vmag_gust_idx
    real(r8) :: umb(pcols), vmb(pcols),vmag(pcols)
    logical :: use_SPCAM, use_MAML ! flag for MMF and MAML, respectively
-! [lee1046] TODO: decide whether to keep #ifdef MAML or not
-#ifdef MAML
-   !CRM-level variables 
+   
+   !CRM-level variables: Used only for the multi-instance MMF functionality 
    integer :: j
    integer :: crm_t_idx
    integer :: crm_qv_idx
@@ -456,8 +461,6 @@ subroutine cam_export(state,cam_out,pbuf)
    real(r8), pointer :: crm_pcp(:,:,:)
    real(r8), pointer :: crm_snw(:,:,:)
    real(r8), pointer :: crm_angle(:)
-#endif
-
 
    real(r8), pointer :: prec_dp(:)                 ! total precipitation   from ZM convection
    real(r8), pointer :: snow_dp(:)                 ! snow from ZM   convection
@@ -499,9 +502,9 @@ subroutine cam_export(state,cam_out,pbuf)
       cam_out%zbot(1:ncol,j)         = state%zm  (1:ncol,pver)
       cam_out%qbot(1:ncol,2:pcnst,j) = state%q   (1:ncol,pver,2:pcnst)
    end do
-   psm1           (1:ncol,lchnk)  = state%ps(1:ncol)
-   srfrpdel       (1:ncol,lchnk)  = state%rpdel(1:ncol,pver)
-   cam_out%co2diag(1:ncol)        = chem_surfvals_get('CO2VMR') * 1.0e+6_r8 
+   psm1     (1:ncol,lchnk)  = state%ps(1:ncol)
+   srfrpdel (1:ncol,lchnk)  = state%rpdel(1:ncol,pver)
+   cam_out%co2diag(1:ncol)  = chem_surfvals_get('CO2VMR') * 1.0e+6_r8 
    if (co2_transport()) then
       cam_out%co2prog(1:ncol) = state%q(1:ncol,pver,c_i(4)) * 1.0e+6_r8 *mwdry/mwco2
    end if

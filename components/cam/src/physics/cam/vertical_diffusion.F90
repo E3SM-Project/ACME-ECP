@@ -663,7 +663,6 @@ contains
     use constituents,       only : cnst_get_type_byind, cnst_name, cnst_fixed_ubc, cnst_fixed_ubflx
     use physconst,          only : pi
     use pbl_utils,          only : virtem, calc_obklen
-
     ! --------------- !
     ! Input Arguments !
     ! --------------- !

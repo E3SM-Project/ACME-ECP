@@ -111,8 +111,8 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   else
     call shear_prod2D(ncrms,def2)
   endif
-
-  !!! initialize surface and top buoyancy flux to zero
+  
+  !!! initialize surface buoyancy flux and top buoyancy flux to zero
   !$acc parallel loop collapse(3) async(asyncid)
   do j = 1 , ny
     do i = 1 , nx
@@ -124,6 +124,57 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
       enddo
     enddo
   enddo
+! [lee1046]
+#if defined( SP_CRM_SFC_FLUX )
+    !!! When SP_CRM_SFC_FLUX is defined, surface level buoyancy fluxes is added as
+    !!! a lower boundary condition of the CRM to trigger subgrid turbulence.
+    k = 1
+    do j = 1,ny
+      do i = 1,nx
+         do icrm = 1,ncrm
+           !bloss: compute suface buoyancy flux
+           ! Use surface temperature and vapor mixing ratio. This is slightly inconsistent, 
+           ! but the error is small, and it's cheaper than another saturation mixing ratio computation.
+           bbb = 1.+epsv*qv(icrm,i,j,k)
+           a_prod_bu_vert(icrm,i,j,k-1) = bbb*bet(icrm,k)*fluxbt(icrm,i,j) + &
+                                  bet(icrm,k)*epsv*(t_sfc_xy(icrm,i,j))*fluxbq(icrm,i,j) 
+
+           if((nstep.eq.1).AND.(icycle.eq.1)) then
+             !bloss(2016-05-09): 
+             ! At start of simulation, make sure that subgrid TKE
+             ! is non-zero at surface if surface buoyancy fluxes are positive.
+             ! If they are, compute the TKE implied by local equilibrium between
+             ! turbulence production by the surface fluxes and dissipation. Take
+             ! the initial TKE in the lowest level to be the larger of that and the 
+             ! initial value. Since the present values of TKE, eddy viscosity and eddy
+             ! diffusivity are used in computing the new values, it is
+             ! important for them not to be zero initially if the buoyancy
+             ! flux is non-zero initially.
+              grd=dz(icrm)*adz(icrm,k)
+              Pr=1. 
+              Ce1=Ce/0.7*0.19
+              Ce2=Ce/0.7*0.51
+              Cee=Ce1+Ce2
+              ! Choose the subgrid TKE to be the larger of the initial value or
+              ! that which satisfies local equilibrium, buoyant production = dissipation
+              ! or a_prod_bu = Cee/grd * tke^(3/2).
+              ! NOTE: We're ignoring shear production here.
+              tke(icrm,i,j,k) = max( tke(icrm,i,j,k), &
+                                   ( grd/Cee * max( real(1.e-20,crm_rknd), &
+                                     0.5*a_prod_bu_vert(icrm,i,j,k-1) ) )**(2./3.) )
+              ! eddy viscosity = Ck*grd * sqrt(tke) --- analogous for Smagorinksy.
+              tk(icrm,i,j,k) = Ck*grd * sqrt( tke(icrm,i,j,k) )
+              ! eddy diffusivity = Pr * eddy viscosity
+              tkh(icrm,i,j,k) = Pr*tk(icrm,i,j,k)
+           end if ! (nstep.eq.1) && (icycle.eq.1)  
+           ! compute subgrid buoyancy flux at surface 
+           ! back buoy_sgs out from buoyancy flux, a_prod_bu = - (tkh(i,j,k,icrm)+0.001)*buoy_sgs
+           buoy_sgs_vert(icrm,i,j,k-1) = - a_prod_bu_vert(icrm,i,j,k-1)/(tkh(icrm,i,j,k)+0.001)
+        end do ! icrm =1,ncrms   
+      end do ! i = 1,nx
+    end do ! j = 1,ny
+#endif /* SP_CRM_SFC_FLUX */
+! [lee1046]
 
   !-----------------------------------------------------------------------
   ! compute SGS buoyancy flux at w-levels and SGS quantities in interior of domain
@@ -132,16 +183,11 @@ subroutine tke_full(ncrms,dimx1_d, dimx2_d, dimy1_d, dimy2_d,   &
   !!! we will over-write this later if conditions are cloudy
   !$acc parallel loop collapse(4) async(asyncid)
   do k = 1,nzm-1
+    kc = k+1
+    kb = k
     do j = 1,ny
       do i = 1,nx
         do icrm = 1 , ncrms
-          if (k.lt.nzm) then
-            kc = k+1
-            kb = k
-          else
-            kc = k
-            kb = k-1
-          end if
           !!! first compute subgrid buoyancy flux at interface above this level.
           !!! average betdz to w-levels
           betdz = 0.5*(bet(icrm,kc)+bet(icrm,kb))/dz(icrm)/adzw(icrm,k+1)

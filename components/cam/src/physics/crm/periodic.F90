@@ -32,7 +32,7 @@ contains
       do j = 1 , ny
         do i = 1 , nx
           do icrm = 1 , ncrms
-            w(icrm,i,j,nz) = sstxy(icrm,i,j)
+            w(icrm,i,j,nz) = t_sfc_xy(icrm,i,j)
           enddo
         enddo
       enddo
@@ -41,7 +41,7 @@ contains
       do j = 1-YES3D , ny+YES3D
         do i = 0 , nx+1
           do icrm = 1 , ncrms
-            if ( i >= 0 .and. i <= nx   .and. j >= 1-YES3D .and. j <= ny       ) sstxy(icrm,i,j) = w(icrm,i,j,nz)
+            if ( i >= 0 .and. i <= nx   .and. j >= 1-YES3D .and. j <= ny       ) t_sfc_xy(icrm,i,j) = w(icrm,i,j,nz)
           enddo
         enddo
       enddo

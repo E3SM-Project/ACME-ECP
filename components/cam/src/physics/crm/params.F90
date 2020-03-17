@@ -88,8 +88,8 @@ module params
   real(crm_rknd), allocatable :: fcor(:)  ! Coriolis parameter
   real(crm_rknd), allocatable :: longitude0(:)    ! latitude of the domain's center
   real(crm_rknd), allocatable :: latitude0 (:)    ! longitude of the domain's center
-
   real(crm_rknd), allocatable :: z0(:)            ! roughness length
+  ![lee1046]
   logical :: les =.false.    ! flag for Large-Eddy Simulation
   logical, allocatable :: ocean(:)           ! flag indicating that surface is water
   logical, allocatable :: land(:)            ! flag indicating that surface is land
@@ -111,7 +111,7 @@ module params
   logical:: docolumn = .false.
   logical:: dotracers = .false.
   logical:: dosmoke = .false.
-
+  
   integer, parameter :: asyncid = 1
 
   integer:: nclubb = 1 ! SAM timesteps per CLUBB timestep

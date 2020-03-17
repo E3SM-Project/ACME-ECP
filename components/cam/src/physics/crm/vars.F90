@@ -94,7 +94,7 @@ module vars
   !---------------------------------------------------------------------
   !  Horizontally varying stuff (as a function of xy)
   !
-  real(crm_rknd), allocatable :: sstxy    (:,:,:) !  surface temperature xy-distribution
+  real(crm_rknd), allocatable :: t_sfc_xy (:,:,:) !  surface temperature xy-distribution
   real(crm_rknd), allocatable :: fcory    (:,:)      !  Coriolis parameter xy-distribution
   real(crm_rknd), allocatable :: fcorzy   (:,:)      !  z-Coriolis parameter xy-distribution
   real(crm_rknd), allocatable :: latitude (:,:,:)      ! latitude (degrees,:)
@@ -224,7 +224,7 @@ contains
     allocate( ttend(ncrms,nzm)  )
     allocate( utend(ncrms,nzm)  )
     allocate( vtend(ncrms,nzm)  )
-    allocate( sstxy    (ncrms,0:nx,(1-YES3D):ny)   )
+    allocate( t_sfc_xy(ncrms,0:nx,(1-YES3D):ny)   )
     allocate( fcory(ncrms,0:ny)       )
     allocate( fcorzy(ncrms,ny)       )
     allocate( latitude(ncrms,nx,ny)        )
@@ -324,7 +324,7 @@ contains
     call prefetch( ttend )
     call prefetch( utend )
     call prefetch( vtend )
-    call prefetch( sstxy )
+    call prefetch( t_sfc_xy )
     call prefetch( fcory )
     call prefetch( fcorzy )
     call prefetch( latitude )
@@ -426,7 +426,7 @@ contains
     ttend = zero
     utend = zero
     vtend = zero
-    sstxy = zero
+    t_sfc_xy = zero
     fcory = zero
     fcorzy = zero
     latitude = zero
@@ -530,7 +530,7 @@ contains
     deallocate( ttend )
     deallocate( utend )
     deallocate( vtend )
-    deallocate( sstxy )
+    deallocate( t_sfc_xy )
     deallocate( fcory )
     deallocate( fcorzy )
     deallocate( latitude )
