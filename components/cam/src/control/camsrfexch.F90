@@ -108,6 +108,7 @@ module camsrfexch
      real(r8) :: wsx(pcols,num_inst_atm)              ! surface u-stress (N)
      real(r8) :: wsy(pcols,num_inst_atm)              ! surface v-stress (N)
      real(r8) :: snowhland(pcols,num_inst_atm)        ! snow depth (liquid water equivalent) over land 
+     real(r8) :: tsmi(pcols,num_inst_atm)             ! surface temperature for multi-instance MMF functionality.                                                      ! [TODO] consolidate cam_in%ts with cam_in%tsmi 
      ![lee1046]
      
      real(r8) :: tref(pcols)             ! ref height surface air temp
@@ -232,6 +233,7 @@ CONTAINS
        cam_in(c)%wsx      (:,:) = 0._r8
        cam_in(c)%wsy      (:,:) = 0._r8
        cam_in(c)%snowhland(:,:) = 0._r8
+       cam_in(c)%tsmi     (:,:) = 0._r8
        cam_in(c)%tref     (:) = 0._r8
        cam_in(c)%qref     (:) = 0._r8
        cam_in(c)%u10      (:) = 0._r8
