@@ -326,7 +326,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
   ![lee1046]
   YESV = YES3D
-#if define (MAML) || defined(MAML1)
+#if defined (MAML) || defined(MAML1)
   YESV = 1  ! do not zero-out vwind for CRM 
   !--------------------------
   ! lee1046 - sanity check for MAML
@@ -828,7 +828,7 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
 
       !-----------------------------------------------
       !     surface fluxes:
-      if (dosurface) call crmsurface(ncrms,bflx)
+      if (dosurface) call crmsurface(ncrms,bflx,z0_loc)
 
       !-----------------------------------------------------------
       !  SGS physics:

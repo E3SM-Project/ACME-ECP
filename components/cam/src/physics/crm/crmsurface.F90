@@ -9,7 +9,7 @@ contains
     implicit none
     integer, intent(in) :: ncrms
     ![lee1046]
-    real(crm_rknd), intent (in) :: bflx(ncrms,nx), z0_loc(ncrms,nx)
+    real(crm_rknd), intent (in) :: bflx(ncrms,nx,ny), z0_loc(ncrms,nx,ny)
     ![lee1046]
     real(crm_rknd) u_h0, tau00, tmp
     integer i,j,icrm
@@ -28,7 +28,7 @@ contains
         do i=1,nx
           do icrm = 1 , ncrms
             u_h0 = max(real(1.,crm_rknd),sqrt((0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug)**2+(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg)**2))
-            tau00 = rho(icrm,1) * diag_ustar(z(icrm,1),bflx(icrm),u_h0,z0(icrm))**2
+            tau00 = rho(icrm,1) * diag_ustar(z(icrm,1),bflx(icrm,i,j),u_h0,z0_loc(icrm,i,j))**2
             fluxbu(icrm,i,j) = -(0.5*(u(icrm,i+1,j,1)+u(icrm,i,j,1))+ug-uhl(icrm))/u_h0*tau00
             fluxbv(icrm,i,j) = -(0.5*(v(icrm,i,j+YES3D,1)+v(icrm,i,j,1))+vg-vhl(icrm))/u_h0*tau00
             tmp = fluxbu(icrm,i,j)/dble(nx*ny)

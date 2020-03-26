@@ -78,7 +78,7 @@ contains
       if (.not. allocated(this%bflxls))   allocate(this%bflxls(ncrms,nx,ny))
       if (.not. allocated(this%fluxt00))  allocate(this%fluxt00(ncrms,nx,ny))
       if (.not. allocated(this%fluxq00))  allocate(this%fluxq00(ncrms,nx,ny))
-      if (.not. allocated(this%tau00))    allocate(this%tau00(ncrms,nx,ny)
+      if (.not. allocated(this%tau00))    allocate(this%tau00(ncrms,nx,ny))
       if (.not. allocated(this%fluxu00))  allocate(this%fluxu00(ncrms,nx,ny))
       if (.not. allocated(this%fluxv00))  allocate(this%fluxv00(ncrms,nx,ny))
       ! [lee1046]
