@@ -982,8 +982,6 @@ subroutine crm(lchnk, icol, ncrms, dt_gl, plev, &
       dt3(na) = dtn
       dtfactor = dtn/dt
 
-write(*,"(4(a,1x,I4))") "20_crm_module, nstep=",nstep," ;icyc=",icyc,"; icall=",icall
-
       !---------------------------------------------
       !  	the Adams-Bashforth scheme in time
       call abcoefs(ncrms)

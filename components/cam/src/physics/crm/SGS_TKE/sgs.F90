@@ -456,7 +456,6 @@ CONTAINS
         cfl = max( cfl , tmp )
       end do
     end do
-print *,"00_kurant_sgs, cfl=",cfl
 #if defined(_OPENMP)
     !$omp target exit data map(delete: tkhmax)
 #endif
