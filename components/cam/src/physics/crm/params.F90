@@ -1,8 +1,4 @@
 
-#define PRINT(var) \
-    write(*,"(A15,z10,I6)") #var, loc(var), icall
-
-
 module params
   ! use grid, only: nzm
 #ifdef CLUBB_CRM
@@ -124,6 +120,10 @@ module params
 
   public :: allocate_params
   public :: deallocate_params  
+#if defined(_OPENMP)
+  public :: update_host_params
+  public :: update_device_params
+#endif
 contains
   
   subroutine allocate_params(ncrms)
@@ -171,12 +171,6 @@ contains
     !$omp target enter data map(alloc: vhl)
     !$omp target enter data map(alloc: taux0)
     !$omp target enter data map(alloc: tauy0)
-    
-    !$omp target teams distribute parallel do
-    do icrm = 1, ncrms
-      taux0(icrm) = 0.0
-    enddo
-    write(*,*) "params: test omp done!"
 #endif
     fcor       = 0.0
     fcorz      = 0.0
@@ -190,6 +184,36 @@ contains
     taux0      = 0.0
     tauy0      = 0.0
   end subroutine allocate_params
+
+#if defined(_OPENMP)
+  subroutine update_device_params()
+    !$omp target update to( fcor )
+    !$omp target update to( fcorz)
+    !$omp target update to( longitude0)
+    !$omp target update to( latitude0 )
+    !$omp target update to( z0)
+    !$omp target update to( ocean)
+    !$omp target update to( land)
+    !$omp target update to( uhl)
+    !$omp target update to( vhl)
+    !$omp target update to( taux0)
+    !$omp target update to( tauy0)
+  end subroutine update_device_params
+
+  subroutine update_host_params()
+    !$omp target update from( fcor )
+    !$omp target update from( fcorz)
+    !$omp target update from( longitude0)
+    !$omp target update from( latitude0 )
+    !$omp target update from( z0)
+    !$omp target update from( ocean)
+    !$omp target update from( land)
+    !$omp target update from( uhl)
+    !$omp target update from( vhl)
+    !$omp target update from( taux0)
+    !$omp target update from( tauy0)
+  end subroutine update_host_params
+#endif
 
   subroutine deallocate_params()
     implicit none

@@ -14,11 +14,10 @@ contains
     !dvdt(ncrms,nx  , nyp1, nzm, 3)
     !dwdt(ncrms,nx  , ny  , nz , 3)
     !misc(ncrms,nx  , ny  , nz )
-
 #if defined(_OPENACC)    
     !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(4) nowait
+    !$omp target teams distribute parallel do collapse(4)
 #endif
     do k = 1 , nz
       do j = 1 , nyp1
@@ -32,6 +31,6 @@ contains
         enddo
       enddo
     enddo
-  end subroutine
+  end
 
 end module zero_mod

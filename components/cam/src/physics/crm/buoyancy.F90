@@ -13,19 +13,22 @@ contains
     real(crm_rknd) betu, betd
 
     if(docolumn) return
+
 #if defined(_OPENACC)
     !$acc parallel loop gang vector collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do  collapse(4) nowait
+    !$omp target teams distribute parallel do collapse(4)
 #endif
     do k=2,nzm
       do j=1,ny
         do i=1,nx
-          do icrm = 1 , ncrms
+          do icrm=1,ncrms
             kb=k-1
             betu=adz(icrm,kb)/(adz(icrm,k)+adz(icrm,kb))
             betd=adz(icrm,k)/(adz(icrm,k)+adz(icrm,kb))
-
+#if defined(_OPENMP)
+            !$omp atomic update
+#endif
             dwdt(icrm,i,j,k,na)=dwdt(icrm,i,j,k,na) +  &
             bet(icrm,k)*betu* &
             ( tabs0(icrm,k)*(epsv*(qv(icrm,i,j,k)-qv0(icrm,k))-(qcl(icrm,i,j,k)+qci(icrm,i,j,k)-qn0(icrm,k)+qpl(icrm,i,j,k)+qpi(icrm,i,j,k)-qp0(icrm,k))) &
@@ -39,5 +42,4 @@ contains
     end do ! k
 
   end subroutine buoyancy
-
 end module buoyancy_mod

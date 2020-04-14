@@ -30,6 +30,7 @@ contains
     real(crm_rknd) ftmp(nx2,ny2)
     real(crm_rknd) ftmp_x(nx2)
     real(crm_rknd) ftmp_y(ny2)
+    real(crm_rknd) atemp, btemp
     real(8) b,e
     real(8) xi,xj,xnx,xny,ddx2,ddy2,pii,factx,facty
     real(8) alfa(nzm-1),beta(nzm-1)
@@ -59,7 +60,6 @@ contains
     allocate( trigxj(n3j) )
     allocate( a(ncrms,nzm) )
     allocate( c(ncrms,nzm) )
-
 #if defined(_OPENACC)
     call prefetch( f      )
     call prefetch( ff     )
@@ -72,17 +72,19 @@ contains
     call prefetch( a      )
     call prefetch( c      )
 #elif defined(_OPENMP)
-    !$omp target enter data map(alloc: f      )
-    !$omp target enter data map(alloc: ff     )
-    !$omp target enter data map(alloc: iii    )
-    !$omp target enter data map(alloc: jjj    )
-    !$omp target enter data map(alloc: ifaxi  )
-    !$omp target enter data map(alloc: ifaxj  )
-    !$omp target enter data map(alloc: trigxi )
-    !$omp target enter data map(alloc: trigxj )
-    !$omp target enter data map(alloc: a )
-    !$omp target enter data map(alloc: c )
+    !$omp target enter data map(alloc: f)
+    !$omp target enter data map(alloc: ff)
+    !$omp target enter data map(alloc: iii)
+    !$omp target enter data map(alloc: jjj)
+    !$omp target enter data map(alloc: ifaxi)
+    !$omp target enter data map(alloc: ifaxj)
+    !$omp target enter data map(alloc: trigxi)
+    !$omp target enter data map(alloc: trigxj)
+    !$omp target enter data map(alloc: a)
+    !$omp target enter data map(alloc: c)
 #endif
+
+
     it = 0
     jt = 0
 
@@ -111,8 +113,9 @@ contains
 #if defined(_OPENACC)
     call prefetch(eign)
 #elif defined(_OPENMP)
-    !$omp target enter data map(alloc: eign )
+    !$omp target enter data map(alloc: eign)
 #endif
+
     !-----------------------------------------------------------------
     !  Compute the r.h.s. of the Poisson equation for pressure
     call press_rhs(ncrms)
@@ -123,7 +126,7 @@ contains
 #if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(4) nowait
+    !$omp target teams distribute parallel do collapse(4) 
 #endif
     do k = 1,nzslab
       do j = 1,ny
@@ -140,24 +143,23 @@ contains
 #if defined(_OPENACC)
     !$acc parallel loop async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do nowait
+    !$omp target teams distribute parallel do
 #endif
     do icrm = 1 , 1
       call fftfax_crm(nx_gl,ifaxi,trigxi)
       if(RUN3D) call fftfax_crm(ny_gl,ifaxj,trigxj)
     enddo
+
 #if defined(_OPENACC)
     !$acc parallel loop gang vector collapse(3) private(work,ftmp_x) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(3) private(work, ftmp_x) nowait
+    !$omp target teams distribute parallel do collapse(3) private(work, ftmp_x)
 #endif
     do k=1,nzslab
       do j = 1 , ny_gl
         do icrm = 1 , ncrms
 #if defined(_OPENACC)
           !$acc cache(ftmp_x,work)
-#elif defined(_OPENMP)
-          
 #endif
           ftmp_x = f(icrm,:,j,k)
           call fft991_crm(ftmp_x,work,trigxi,ifaxi,1,nx2,nx_gl,1,-1)
@@ -169,15 +171,13 @@ contains
 #if defined(_OPENACC)
       !$acc parallel loop gang vector collapse(3) private(work,ftmp_y) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(3) private(work,ftmp_y) nowait
+      !$omp target teams distribute parallel do collapse(3) private(work, ftmp_y)
 #endif
       do k=1,nzslab
         do i = 1 , nx_gl+1
           do icrm = 1 , ncrms
 #if defined(_OPENACC)
             !$acc cache(ftmp_y,work)
-#elif defined(_OPENMP)
-            
 #endif
             ftmp_y = f(icrm,i,:,k)
             call fft991_crm(ftmp_y,work,trigxj,ifaxj,1,nx2,ny_gl,1,-1)
@@ -192,7 +192,7 @@ contains
 #if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(4) nowait
+    !$omp target teams distribute parallel do collapse(4) 
 #endif
     do k = 1,nzslab
       do j = 1,nyp22-jwall
@@ -210,7 +210,7 @@ contains
 #if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(2) nowait
+    !$omp target teams distribute parallel do collapse(2) 
 #endif
     do k=1,nzm
       do icrm = 1 , ncrms
@@ -222,7 +222,7 @@ contains
 #if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(2) nowait
+    !$omp target teams distribute parallel do collapse(2) 
 #endif
     do j=1,nyp22-jwall
       do i=1,nxp1-iwall
@@ -251,20 +251,18 @@ contains
       enddo
     enddo
 
-    !For working aroung PGI OpenACC bug where it didn't create enough gangs
+    ! For working aroung PGI OpenACC bug where it didn't create enough gangs
     numgangs = ceiling(ncrms*(nyp22-jwall)*(nxp2-iwall)/128.)
 #if defined(_OPENACC)
     !$acc parallel loop gang vector collapse(3) vector_length(128) num_gangs(numgangs) private(alfa,beta) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(3) private(alfa,beta) nowait
+    !$omp target teams distribute parallel do collapse(3) private(alfa, beta)
 #endif
     do j=1,nyp22-jwall
       do i=1,nxp1-iwall
         do icrm = 1 , ncrms
 #if defined(_OPENACC)
           !$acc cache(alfa,beta)
-#elif defined(_OPENMP)
-          
 #endif
           if(dowally) then
             jd=j+jt-1
@@ -290,9 +288,12 @@ contains
             alfa(k)=-c(icrm,k)*e
             beta(k)=(ff(icrm,i,j,k)-a(icrm,k)*beta(k-1))*e
           enddo
-          ff(icrm,i,j,nzm)=(ff(icrm,i,j,nzm)-a(icrm,nzm)*beta(nzm-1))/(eign(i,j)*rho(icrm,nzm)-a(icrm,nzm)+a(icrm,nzm)*alfa(nzm-1))
+          atemp =(ff(icrm,i,j,nzm)-a(icrm,nzm)*beta(nzm-1))/(eign(i,j)*rho(icrm,nzm)-a(icrm,nzm)+a(icrm,nzm)*alfa(nzm-1))
+          ff(icrm,i,j,nzm) = atemp
           do k=nzm-1,1,-1
-            ff(icrm,i,j,k)=alfa(k)*ff(icrm,i,j,k+1)+beta(k)
+            btemp = alfa(k)*ff(icrm,i,j,k+1)
+!!            ff(icrm,i,j,k)=alfa(k)*ff(icrm,i,j,k+1)+beta(k)
+            ff(icrm,i,j,k) =  btemp + beta(k)
           enddo
         enddo
       enddo
@@ -303,7 +304,7 @@ contains
 #if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(4) nowait
+    !$omp target teams distribute parallel do collapse(4) 
 #endif
     do k = 1,nzslab
       do j = 1,nyp22-jwall
@@ -321,15 +322,13 @@ contains
 #if defined(_OPENACC)
       !$acc parallel loop gang vector collapse(3) private(ftmp_y,work) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(3) private(ftmp_y,work) nowait
+      !$omp target teams distribute parallel do collapse(3) 
 #endif
       do k=1,nzslab
         do i = 1 , nx_gl+1
           do icrm = 1 , ncrms
 #if defined(_OPENACC)
             !$acc cache(ftmp_y,work)
-#elif defined(_OPENMP)
-
 #endif
             ftmp_y = f(icrm,i,:,k)
             call fft991_crm(ftmp_y,work,trigxj,ifaxj,1,nx2,ny_gl,1,+1)
@@ -341,15 +340,13 @@ contains
 #if defined(_OPENACC)
     !$acc parallel loop gang vector collapse(3) private(ftmp_x,work) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(3) private(ftmp_x,work) nowait
+    !$omp target teams distribute parallel do collapse(3) private(ftmp_x, work)
 #endif
     do k=1,nzslab
       do j = 1 , ny_gl
         do icrm = 1 , ncrms
 #if defined(_OPENACC)
           !$acc cache(ftmp_x,work)
-#elif defined(_OPENMP)
-         
 #endif
           ftmp_x = f(icrm,:,j,k)
           call fft991_crm(ftmp_x,work,trigxi,ifaxi,1,nx2,nx_gl,1,+1)
@@ -363,7 +360,7 @@ contains
 #if defined(_OPENACC)
     !$acc parallel loop async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do nowait
+    !$omp target teams distribute parallel do
 #endif
     do icrm = 1,1
       do i=1,nx_gl
@@ -380,7 +377,7 @@ contains
 #if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(4) nowait
+    !$omp target teams distribute parallel do collapse(4) 
 #endif
     do k = 1,nzslab
       do j = 1-YES3D,ny
@@ -398,17 +395,17 @@ contains
     call press_grad(ncrms)
 
 #if defined(_OPENMP)
-    !$omp target exit data map(delete: f      )
-    !$omp target exit data map(delete: ff     )
-    !$omp target exit data map(delete: iii    )
-    !$omp target exit data map(delete: jjj    )
-    !$omp target exit data map(delete: ifaxi  )
-    !$omp target exit data map(delete: ifaxj  )
-    !$omp target exit data map(delete: trigxi )
-    !$omp target exit data map(delete: trigxj )
-    !$omp target exit data map(delete: a      )
-    !$omp target exit data map(delete: c      )
-    !$omp target exit data map(delete: eign   )
+    !$omp target exit data map(delete: eign)
+    !$omp target exit data map(delete: f)
+    !$omp target exit data map(delete: ff)
+    !$omp target exit data map(delete: iii) 
+    !$omp target exit data map(delete: jjj)
+    !$omp target exit data map(delete: ifaxi)
+    !$omp target exit data map(delete: ifaxj)
+    !$omp target exit data map(delete: trigxi)
+    !$omp target exit data map(delete: trigxj)
+    !$omp target exit data map(delete: a)
+    !$omp target exit data map(delete: c)
 #endif
 
     deallocate(eign)

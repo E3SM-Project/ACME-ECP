@@ -155,6 +155,7 @@ module accelerate_crm_mod
       real(r8) :: factor, qt_res ! local variables for redistributing moisture
       real(rc) :: ttend_threshold ! threshold for ttend_acc at which MSA aborts
       real(rc) :: tmin  ! mininum value of t allowed (sanity factor)
+      real(rc) :: ttemp, utemp, vtemp, micro_temp  ! temperatory temperature
 
       ttend_threshold = 5.  ! 5K, following UP-CAM implementation
       tmin = 50.  ! should never get below 50K in crm, following UP-CAM implementation
@@ -199,7 +200,7 @@ module accelerate_crm_mod
 #if defined(_OPENACC)
       !$acc parallel loop collapse(2) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(2) nowait
+      !$omp target teams distribute parallel do collapse(2) 
 #endif
       do k = 1, nzm
         do icrm = 1, ncrms
@@ -215,7 +216,7 @@ module accelerate_crm_mod
 #if defined(_OPENACC)
       !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(4) nowait
+      !$omp target teams distribute parallel do collapse(4) 
 #endif
       do k = 1, nzm
         do j = 1 , ny
@@ -263,7 +264,7 @@ module accelerate_crm_mod
 #if defined(_OPENACC)
       !$acc parallel loop collapse(2) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(2) nowait
+      !$omp target teams distribute parallel do collapse(2) 
 #endif
       do k = 1, nzm
         do icrm = 1, ncrms
@@ -285,7 +286,7 @@ module accelerate_crm_mod
 #if defined(_OPENACC)
       !$acc wait(asyncid)
 #elif defined(_OPENMP)
-
+      !$omp taskwait
 #endif
       if (ceaseflag) then ! special case for dT/dt too large
         ! MSA will not be applied here or for the remainder of the CRM integration.
@@ -308,24 +309,41 @@ module accelerate_crm_mod
         return
       endif
 
+
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !! Apply the accelerated tendencies
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #if defined(_OPENACC)
       !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(4) nowait
+      !$omp target teams distribute parallel do collapse(4) 
 #endif
       do k = 1, nzm
         do j = 1, ny
           do i = 1, nx
             do icrm = 1, ncrms
+              ttemp = t(icrm,i,j,k) + crm_accel_factor * ttend_acc(icrm,k)
               ! don't let T go negative!
-              t(icrm,i,j,k) = max(tmin, t(icrm,i,j,k) + crm_accel_factor * ttend_acc(icrm,k))
+              t(icrm,i,j,k) = max(tmin, ttemp)
               if (crm_accel_uv) then
+#if defined(_OPENACC)
+                !$acc atomic update
+#elif defined(_OPENMP)
+                !$omp atomic update
+#endif
                 u(icrm,i,j,k) = u(icrm,i,j,k) + crm_accel_factor * utend_acc(icrm,k) 
+#if defined(_OPENACC)
+                !$acc atomic update
+#elif defined(_OPENMP)
+                !$omp atomic update
+#endif
                 v(icrm,i,j,k) = v(icrm,i,j,k) + crm_accel_factor * vtend_acc(icrm,k) 
               endif
+#if defined(_OPENACC)
+              !$acc atomic update
+#elif defined(_OPENMP)
+              !$omp atomic update
+#endif
               micro_field(icrm,i,j,k,idx_qt) = micro_field(icrm,i,j,k,idx_qt) + crm_accel_factor * qtend_acc(icrm,k)
             enddo
           enddo
@@ -338,7 +356,7 @@ module accelerate_crm_mod
 #if defined(_OPENACC)
       !$acc parallel loop collapse(2) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(2) nowait
+      !$omp target teams distribute parallel do collapse(2) 
 #endif
       do k = 1, nzm
         do icrm = 1, ncrms
@@ -346,11 +364,12 @@ module accelerate_crm_mod
           qneg(icrm,k) = 0.
         enddo
       enddo
+
       ! separately accumulate positive and negative qt values in each layer k
 #if defined(_OPENACC)
       !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(4) nowait
+      !$omp target teams distribute parallel do collapse(4) 
 #endif
       do k = 1, nzm
         do j = 1, ny
@@ -379,7 +398,7 @@ module accelerate_crm_mod
 #if defined(_OPENACC)
       !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(4) nowait
+      !$omp target teams distribute parallel do collapse(4) 
 #endif
       do k = 1, nzm
         do j = 1 , ny
@@ -395,7 +414,8 @@ module accelerate_crm_mod
                 ! Clip qt values at 0 and remove the negative excess in each layer
                 ! proportionally from the positive qt fields in the layer
                 factor = 1._r8 + qneg(icrm,k) / qpoz(icrm,k)
-                micro_field(icrm,i,j,k,idx_qt) = max(0._rc, micro_field(icrm,i,j,k,idx_qt) * factor)
+                micro_temp = micro_field(icrm,i,j,k,idx_qt) * factor
+                micro_field(icrm,i,j,k,idx_qt) = max(0._rc, micro_temp)
                 ! Partition micro_field == qv + qcl + qci following these rules:
                 !    (1) attempt to satisfy purely by adjusting qv
                 !    (2) adjust qcl and qci only if needed to ensure positivity
@@ -410,7 +430,13 @@ module accelerate_crm_mod
                   if (qt_res < 0._r8) then
                     ! qv was clipped; need to reduce qcl and qci accordingly
                     factor = 1._r8 + qt_res / (qcl(icrm,i,j,k) + qci(icrm,i,j,k))
+#if defined(_OPENMP)
+                    !$omp atomic update
+#endif
                     qcl(icrm,i,j,k) = qcl(icrm,i,j,k) * factor
+#if defined(_OPENMP)
+                    !$omp atomic update
+#endif
                     qci(icrm,i,j,k) = qci(icrm,i,j,k) * factor
                   endif
                 endif
@@ -432,7 +458,6 @@ module accelerate_crm_mod
       !$omp target exit data map(delete: qpoz      )
       !$omp target exit data map(delete: qneg      )
 #endif
-
       deallocate( ubaccel   )
       deallocate( vbaccel   )
       deallocate( tbaccel   )

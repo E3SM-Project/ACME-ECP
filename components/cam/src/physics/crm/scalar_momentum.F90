@@ -22,7 +22,10 @@ module scalar_momentum_mod
    use openacc_utils
 #endif
    implicit none
-   public
+
+   public allocate_scalar_momentum
+   public deallocate_scalar_momentum
+   public scalar_momentum_tend 
 
    real(crm_rknd), allocatable :: u_esmt(:,:,:,:)       ! scalar zonal velocity
    real(crm_rknd), allocatable :: v_esmt(:,:,:,:)       ! scalar meridonal velocity
@@ -41,12 +44,6 @@ module scalar_momentum_mod
    character*30 v_esmt_name
    character*10 esmt_units
 
-   public :: allocate_scalar_momentum
-   public :: deallocate_scalar_momentum
-   public :: scalar_momentum_tend
-   public :: scalar_momentum_pgf
-   public :: esmt_fft_forward
-   public :: esmt_fft_backward
 contains
 
 !========================================================================================
@@ -69,7 +66,6 @@ subroutine allocate_scalar_momentum(ncrms)
    allocate( v_esmt_sgs   (nz,ncrms)  )
    allocate( u_esmt_diff  (nz,ncrms)  )
    allocate( v_esmt_diff  (nz,ncrms)  )
-
 #if defined(_OPENACC)
    call prefetch( u_esmt )
    call prefetch( v_esmt )
@@ -110,8 +106,36 @@ subroutine allocate_scalar_momentum(ncrms)
    esmt_units  = 'm/s'
 
 end subroutine allocate_scalar_momentum
-
 !========================================================================================
+#if defined(_OPENMP)
+subroutine update_device_scalar_momentum()
+   implicit none
+   !$omp target update to( u_esmt )
+   !$omp target update to( v_esmt )
+   !$omp target update to( fluxb_u_esmt )
+   !$omp target update to( fluxb_v_esmt )
+   !$omp target update to( fluxt_u_esmt )
+   !$omp target update to( fluxt_v_esmt )
+   !$omp target update to( u_esmt_sgs )
+   !$omp target update to( v_esmt_sgs )
+   !$omp target update to( u_esmt_diff )
+   !$omp target update to( v_esmt_diff )
+end subroutine update_device_scalar_momentum
+
+subroutine update_host_scalar_momentum
+   implicit none
+   !$omp target update from( u_esmt )
+   !$omp target update from( v_esmt )
+   !$omp target update from( fluxb_u_esmt )
+   !$omp target update from( fluxb_v_esmt )
+   !$omp target update from( fluxt_u_esmt )
+   !$omp target update from( fluxt_v_esmt )
+   !$omp target update from( u_esmt_sgs )
+   !$omp target update from( v_esmt_sgs )
+   !$omp target update from( u_esmt_diff )
+   !$omp target update from( v_esmt_diff )
+end subroutine update_host_scalar_momentum
+#endif
 !========================================================================================
 subroutine deallocate_scalar_momentum()
    !------------------------------------------------------------------

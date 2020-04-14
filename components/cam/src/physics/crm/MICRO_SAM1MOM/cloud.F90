@@ -1,7 +1,7 @@
 module cloud_mod
   use params, only: asyncid
   implicit none
-  public :: cloud
+
 contains
 
   subroutine cloud(ncrms,q,qp,qn)
@@ -17,7 +17,7 @@ contains
     integer, intent(in) :: ncrms
     real(crm_rknd) :: q(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
     real(crm_rknd) :: qp(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm)
-    real(crm_rknd) qn(ncrms,nx,ny,nzm)  ! cloud condensate (liquid + ice)
+    real(crm_rknd) :: qn(ncrms,nx,ny,nzm)  ! cloud condensate (liquid + ice)
 
     integer i,j,k, kb, kc,icrm
     real(crm_rknd) dtabs, tabs1, an, bn, ap, bp, om, ag, omp
@@ -37,7 +37,8 @@ contains
 #if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(4) nowait
+    !$omp target teams distribute parallel do collapse(4) nowait private(tabs1,niter,dtabs) &
+    !$omp depend(in: gamaz,t,pres) depend(inout: q,qp,tabs) depend(out: qn)
 #endif
     do k = 1, nzm
       do j = 1, ny
@@ -47,6 +48,8 @@ contains
             ! Initial guess for temperature assuming no cloud water/ice:
             tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(icrm,k)
             tabs1=(tabs(icrm,i,j,k)+fac1*qp(icrm,i,j,k))/(1.+fac2*qp(icrm,i,j,k))
+            niter = 0
+            dtabs = 100.
             ! Warm cloud:
             if(tabs1.ge.tbgmax) then
               tabs1=tabs(icrm,i,j,k)+fac_cond*qp(icrm,i,j,k)
@@ -62,9 +65,10 @@ contains
             endif
             !  Test if condensation is possible:
             if(q(icrm,i,j,k).gt.qsatt) then
-              niter=0
+              niter = 0
               dtabs = 100.
-              do while(abs(dtabs).gt.0.01.and.niter.lt.10)
+            !  do while(abs(dtabs).gt.0.01.and.niter.lt.10)
+   100        continue
                 if(tabs1.ge.tbgmax) then
                   om=1.
                   lstarn=fac_cond
@@ -102,7 +106,10 @@ contains
                 dtabs=-fff/dfff
                 niter=niter+1
                 tabs1=tabs1+dtabs
-              end do
+
+              if( niter .lt. 5) goto 100
+            !  if (abs(dtabs).gt.0.01.and.niter.lt.10) goto 100
+            !  end do
               qsatt = qsatt + dqsat * dtabs
               qn(icrm,i,j,k) = max(real(0.,crm_rknd),q(icrm,i,j,k)-qsatt)
             else

@@ -1,3 +1,4 @@
+
 module crmtracers
 
   ! This module serves as a template for adding tracer transport in the model. The tracers can be
@@ -34,6 +35,10 @@ module crmtracers
   public :: tracers_flux
   public :: tracers_physics
   public :: tracers_hbuf_init
+#if defined(_OPENMP)
+  public :: update_device_tracers
+  public :: update_host_tracers
+#endif
 CONTAINS
 
 
@@ -88,6 +93,31 @@ CONTAINS
     tracerunits = ''
   end subroutine allocate_tracers
 
+#if defined(_OPENMP)
+  subroutine update_device_tracers()
+    implicit none
+    !$omp target update to( tracer    )
+    !$omp target update to( fluxbtr   )
+    !$omp target update to( fluxttr   )
+    !$omp target update to( trwle     )
+    !$omp target update to( trwsb     )
+    !$omp target update to( tradv     )
+    !$omp target update to( trdiff    )
+    !$omp target update to( trphys    )
+  end subroutine update_device_tracers
+
+  subroutine update_host_tracers()
+    implicit none
+    !$omp target update from( tracer    )
+    !$omp target update from( fluxbtr   )
+    !$omp target update from( fluxttr   )
+    !$omp target update from( trwle     )
+    !$omp target update from( trwsb     )
+    !$omp target update from( tradv     )
+    !$omp target update from( trdiff    )
+    !$omp target update from( trphys    )
+  end subroutine update_host_tracers
+#endif
 
   subroutine deallocate_tracers()
     implicit none

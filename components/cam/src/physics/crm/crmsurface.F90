@@ -17,10 +17,20 @@ contains
 #if defined(_OPENACC)
       !$acc parallel loop async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do nowait
+      !$omp target teams distribute parallel do
 #endif
       do icrm = 1 , ncrms
+#if defined(_OPENACC)
+        !$acc atomic update
+#elif defined(_OPENMP)
+        !$omp atomic update
+#endif
         uhl(icrm) = uhl(icrm) + dtn*utend(icrm,1)
+#if defined(_OPENACC)
+        !$acc atomic update
+#elif defined(_OPENMP)
+        !$omp atomic update
+#endif
         vhl(icrm) = vhl(icrm) + dtn*vtend(icrm,1)
         taux0(icrm) = 0.
         tauy0(icrm) = 0.
@@ -28,7 +38,7 @@ contains
 #if defined(_OPENACC)
       !$acc parallel loop collapse(3) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(3) nowait
+      !$omp target teams distribute parallel do collapse(3)
 #endif
       do j=1,ny
         do i=1,nx
@@ -85,7 +95,7 @@ contains
 #if defined(_OPENACC)
     !$acc routine seq
 #elif defined(_OPENMP)
-  !$omp declare target
+    !$omp declare target
 #endif
     implicit none
     real(crm_rknd), parameter      :: vonk =  0.4   ! von Karmans constant
@@ -129,7 +139,7 @@ contains
 #if defined(_OPENACC)
     !$acc routine seq
 #elif defined(_OPENMP)
-  !$omp declare target
+    !$omp declare target
 #endif
     real(crm_rknd), parameter      :: vonk =  0.4   ! von Karmans constant
     real(crm_rknd), parameter      :: g    = 9.81   ! gravitational acceleration

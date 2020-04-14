@@ -2,9 +2,9 @@ module precip_init_mod
   use params, only: asyncid
   use task_util_mod
   implicit none
-  public :: precip_init
 
 contains
+
   subroutine precip_init(ncrms)
     ! Initialize precipitation related stuff
     use vars
@@ -47,7 +47,7 @@ contains
 #if defined(_OPENACC)
     !$acc parallel loop collapse(2)  async(asyncid)
 #elif defined(_OPENMP)
-    !!$omp target teams distribute parallel do collapse(2) nowait
+    !$omp target teams distribute parallel do collapse(2)
 #endif
     do k=1,nzm
       do icrm = 1 , ncrms
@@ -95,6 +95,5 @@ contains
     end do
 
   end subroutine precip_init
-
 
 end module precip_init_mod

@@ -8,7 +8,7 @@ module micro_params
   !  Microphysics stuff:
 
   ! Densities of hydrometeors
-  public
+
   real(crm_rknd), parameter :: rhor = 1000. ! Density of water, kg/m3
   real(crm_rknd), parameter :: rhos = 100.  ! Density of snow, kg/m3
   real(crm_rknd), parameter :: rhog = 400.  ! Density of graupel, kg/m3
@@ -93,8 +93,6 @@ module micro_params
 
   real(crm_rknd) a_bg, a_pr, a_gr
 
-  public :: allocate_micro_params
-  public :: deallocate_micro_params
 
 contains
 
@@ -146,8 +144,7 @@ contains
     !$omp target enter data map(alloc: evapg1  )
     !$omp target enter data map(alloc: evapg2  )
 #endif
-
-    zero = 0.0_crm_rknd
+    zero = 0
 
     accrsc  = zero
     accrsi  = zero
@@ -163,6 +160,39 @@ contains
     evapg2  = zero
   end subroutine allocate_micro_params
 
+#if defined(_OPENMP)
+  subroutine update_device_micro_params()
+    implicit none
+    !$omp target update to( accrsc  )
+    !$omp target update to( accrsi  )
+    !$omp target update to( accrrc  )
+    !$omp target update to( coefice )
+    !$omp target update to( accrgc  )
+    !$omp target update to( accrgi  )
+    !$omp target update to( evaps1  )
+    !$omp target update to( evaps2  )
+    !$omp target update to( evapr1  )
+    !$omp target update to( evapr2  )
+    !$omp target update to( evapg1  )
+    !$omp target update to( evapg2  )
+  end subroutine update_device_micro_params
+
+  subroutine update_host_micro_params()
+    implicit none
+    !$omp target update from( accrsc  )
+    !$omp target update from( accrsi  )
+    !$omp target update from( accrrc  )
+    !$omp target update from( coefice )
+    !$omp target update from( accrgc  )
+    !$omp target update from( accrgi  )
+    !$omp target update from( evaps1  )
+    !$omp target update from( evaps2  )
+    !$omp target update from( evapr1  )
+    !$omp target update from( evapr2  )
+    !$omp target update from( evapg1  )
+    !$omp target update from( evapg2  )
+  end subroutine update_host_micro_params
+#endif
 
   subroutine deallocate_micro_params()
     implicit none
@@ -193,4 +223,5 @@ contains
     deallocate( evapg1  )
     deallocate( evapg2  )
   end subroutine deallocate_micro_params
+
 end module micro_params

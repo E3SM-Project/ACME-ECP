@@ -5,7 +5,6 @@ module advect_all_scalars_mod
 contains
 
   subroutine advect_all_scalars(ncrms)
-
     use vars
     use microphysics
     use sgs
@@ -31,8 +30,11 @@ contains
     call prefetch( esmt_offset )
     call prefetch( dummy )
 #elif defined(_OPENMP)
-    !$omp target enter data map(alloc: esmt_offset )
-    !$omp target enter data map(alloc: dummy )
+    !$omp target enter data map(alloc: esmt_offset)
+    !$omp target enter data map(alloc: dummy)
+#endif
+#if defined(_OPENMP)
+    !$omp target update from (flag_precip)
 #endif
 
     !      advection of scalars :
@@ -94,12 +96,10 @@ contains
       v_esmt(icrm,:,:,:) = v_esmt(icrm,:,:,:) - esmt_offset(icrm)
     enddo
 #endif
-
 #if defined(_OPENMP)
-    !$omp target exit data map(delete: esmt_offset )
-    !$omp target exit data map(delete: dummy )
+    !$omp target exit data map(delete: esmt_offset)
+    !$omp target exit data map(delete: dummy)
 #endif
-
     deallocate( esmt_offset )
     deallocate( dummy )
 

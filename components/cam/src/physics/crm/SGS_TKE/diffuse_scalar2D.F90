@@ -41,8 +41,8 @@ contains
     call prefetch( flx  )
     call prefetch( dfdt )
 #elif defined(_OPENMP)
-    !$omp target enter data map(alloc: flx )
-    !$omp target enter data map(alloc: dfdt )
+    !$omp target enter data map(alloc: flx)
+    !$omp target enter data map(alloc: dfdt)
 #endif
 
     !For working around PGI bug where it didn't create enough OpenACC gangs
@@ -50,7 +50,7 @@ contains
 #if defined(_OPENACC)
     !$acc parallel loop vector_length(128) num_gangs(numgangs) collapse(3) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(3) nowait
+    !$omp target teams distribute parallel do collapse(3)
 #endif
     do k = 1 , nzm
       do i = 1 , nx
@@ -65,7 +65,7 @@ contains
 #if defined(_OPENACC)
         !$acc parallel loop collapse(2) async(asyncid)
 #elif defined(_OPENMP)
-        !$omp target teams distribute parallel do collapse(2) nowait
+        !$omp target teams distribute parallel do collapse(2)
 #endif
         do k=1,nzm
           do icrm = 1 , ncrms
@@ -77,7 +77,7 @@ contains
 #if defined(_OPENACC)
         !$acc parallel loop collapse(2) async(asyncid)
 #elif defined(_OPENMP)
-        !$omp target teams distribute parallel do collapse(2) nowait
+        !$omp target teams distribute parallel do collapse(2)
 #endif
         do k=1,nzm
           do icrm = 1 , ncrms
@@ -91,7 +91,7 @@ contains
 #if defined(_OPENACC)
       !$acc parallel loop collapse(3) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(3) nowait
+      !$omp target teams distribute parallel do collapse(3)
 #endif
       do k=1,nzm
         do i=0,nx
@@ -106,33 +106,36 @@ contains
 #if defined(_OPENACC)
       !$acc parallel loop collapse(3) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(3) nowait
+      !$omp target teams distribute parallel do collapse(3)
 #endif
       do k=1,nzm
         do i=1,nx
           do icrm = 1 , ncrms
             ib=i-1
+#if defined(_OPENACC)
+            !$acc atomic update
+#elif defined(_OPENMP)
+            !$omp atomic update
+#endif
             dfdt(icrm,i,j,k)=dfdt(icrm,i,j,k)-(flx(icrm,i,j,k)-flx(icrm,ib,j,k))
           enddo
         enddo
       enddo
     endif
-
 #if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(2) nowait
+    !$omp target teams distribute parallel do collapse(2)
 #endif
     do k = 1 , nzm
       do icrm = 1 , ncrms
         flux(icrm,k) = 0.
       enddo
     enddo
-
 #if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(3) nowait
+    !$omp target teams distribute parallel do collapse(3)
 #endif
     do k=1,nzm
       do i=1,nx
@@ -165,23 +168,28 @@ contains
         enddo
       enddo
     enddo
-
 #if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(3) nowait
+    !$omp target teams distribute parallel do collapse(3)
 #endif
     do k=1,nzm
       do i=1,nx
         do icrm = 1 , ncrms
           kb=k-1
           rhoi = 1./(adz(icrm,k)*rho(icrm,k))
-          dfdt(icrm,i,j,k)=dtn*(dfdt(icrm,i,j,k)-(flx(icrm,i,j,k)-flx(icrm,i,j,kb))*rhoi)
+          tmp = dtn*(dfdt(icrm,i,j,k)-(flx(icrm,i,j,k)-flx(icrm,i,j,kb))*rhoi)
+          dfdt(icrm,i,j,k) = tmp
+         ! dfdt(icrm,i,j,k)=dtn*(dfdt(icrm,i,j,k)-(flx(icrm,i,j,k)-flx(icrm,i,j,kb))*rhoi)
+#if defined(_OPENACC)
+          !$acc atomic update
+#elif defined(_OPENMP)
+          !$omp atomic update
+#endif
           field(icrm,i,j,k)=field(icrm,i,j,k) + dfdt(icrm,i,j,k)
         enddo
       enddo
     enddo
-
 #if defined(_OPENMP)
     !$omp target exit data map(delete: flx)
     !$omp target exit data map(delete: dfdt)

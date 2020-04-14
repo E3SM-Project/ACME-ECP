@@ -11,11 +11,10 @@ contains
     implicit none
     integer, intent(in) :: ncrms
     integer i,j,k,icrm
-
 #if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(3) nowait
+    !$omp target teams distribute parallel do collapse(3) 
 #endif
     do k=1,nzm
       do j=1,ny
@@ -29,7 +28,7 @@ contains
 #if defined(_OPENACC)
       !$acc parallel loop collapse(3) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(3) nowait
+      !$omp target teams distribute parallel do collapse(3) 
 #endif
       do k=1,nzm
         do i=1,nx

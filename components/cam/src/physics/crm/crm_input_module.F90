@@ -1,8 +1,4 @@
 
-#define PRINT(var) \
-    write(*,"(A15,z10,I6)") #var, loc(var), icall
-
-
 module crm_input_module
    use params, only: crm_rknd
 #ifdef MODAL_AERO
@@ -52,7 +48,7 @@ module crm_input_module
    public :: crm_input_finalize
 
 #if defined(_OPENMP)
-   public :: crm_input_update_device
+   public :: update_device_input
 #endif
 contains
    !------------------------------------------------------------------------------------------------
@@ -192,23 +188,13 @@ contains
       crm_input_ul_esmt = 0
       crm_input_vl_esmt = 0
 #endif
-
-#if defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(2)
-      do icrm = 1, ncrms
-        do i = 1, nlev
-          crm_input_zmid(icrm,i) = 0.0
-        enddo
-      enddo
-      write(*,*) "crm_input: omp test done!, icall=",icall
-#endif
    end subroutine crm_input_initialize
 
    !\-------------------------
    ! update device data
    !/
 #if defined(_OPENMP)
-   subroutine crm_input_update_device()
+   subroutine update_device_input()
       !$omp target update to (crm_input_zmid)
       !$omp target update to (crm_input_zint)
       !$omp target update to (crm_input_tl)
@@ -239,7 +225,7 @@ contains
       !$omp target update to (crm_input_ul_esmt)
       !$omp target update to (crm_input_vl_esmt)
 #endif
-   end subroutine crm_input_update_device
+   end subroutine update_device_input
 #endif
 
    subroutine crm_input_finalize()

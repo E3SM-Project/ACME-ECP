@@ -2,9 +2,6 @@
 module kurant_mod
    use params, only: asyncid
    use task_util_mod
-#if defined(_OPENMP)
-   use omp_lib
-#endif
    implicit none
 
    contains
@@ -15,7 +12,7 @@ module kurant_mod
       use params, only: crm_rknd
 #if defined(_OPENACC)
       use openacc_utils
-#endif
+#endif 
       implicit none
       integer, intent(in) :: ncrms
       integer i, j, k, ncycle1(1),ncycle2(1),icrm
@@ -24,29 +21,21 @@ module kurant_mod
       real(crm_rknd) cfl, cfl_sgs, tmp
       integer, parameter :: max_ncycle = 16
 
-      real(crm_rknd) :: rate
-      integer :: c1, c2, cr, cm
-
-      ! First initialize the system_clock
-      call system_clock(count_rate=cr)
-      call system_clock(count_max=cm)
-      rate = real(cr, crm_rknd)
-
       allocate(wm (ncrms,nz))
       allocate(uhm(ncrms,nz))
 #if defined(_OPENACC)
       call prefetch(wm  )
       call prefetch(uhm )
 #elif defined(_OPENMP)
-      !$omp target enter data map(alloc: wm  )
-      !$omp target enter data map(alloc: uhm )
+      !$omp target enter data map(alloc: wm)
+      !$omp target enter data map(alloc: uhm)
 #endif
 
       ncycle = 1
 #if defined(_OPENACC)
       !$acc parallel loop collapse(2) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(2) nowait
+      !$omp target teams distribute parallel do collapse(2) 
 #endif
       do k = 1 , nz
         do icrm = 1 , ncrms
@@ -55,49 +44,44 @@ module kurant_mod
         enddo
       enddo
 
-     call SYSTEM_CLOCK(c1)
-
-     do icrm = 1, ncrms
 #if defined(_OPENACC)
-      !$acc parallel loop collapse(3) async(asyncid)
+      !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(3) nowait
+      !$omp target teams distribute parallel do collapse(4) 
 #endif
       do k = 1,nzm
         do j = 1 , ny
           do i = 1 , nx
-!!!!            do icrm = 1 , ncrms
+            do icrm = 1 , ncrms
               tmp = abs(w(icrm,i,j,k))
-!!!#if defined(_OPENACC)
-!!!              !$acc atomic update
-!!!#elif defined(_OPENMP)
-!!!              !$omp atomic update
-!!!#endif
+#if defined(_OPENACC)
+              !$acc atomic update
+#elif defined(_OPENMP)
+              !$omp atomic update
+#endif
               wm(icrm,k) = max( wm(icrm,k) , tmp )
 
               tmp = sqrt(u(icrm,i,j,k)**2+YES3D*v(icrm,i,j,k)**2)
-!!!!#if defined(_OPENACC)
-!!!!              !$acc atomic update
-!!!!#elif defined(_OPENMP)
-!!!!              !$omp atomic update
-!!!!#endif
+#if defined(_OPENACC)
+              !$acc atomic update
+#elif defined(_OPENMP)
+              !$omp atomic update
+#endif
               uhm(icrm,k) = max( uhm(icrm,k) , tmp )
             enddo
           enddo
         enddo
       enddo
 
-      call SYSTEM_CLOCK(c2)
-
       cfl = 0.
 #if defined(_OPENACC)
       !$acc parallel loop collapse(2) reduction(max:cfl) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(2) reduction(max:cfl) nowait
+      !$omp target teams distribute parallel do collapse(2) reduction(max: cfl)
 #endif
       do k=1,nzm
         do icrm = 1 , ncrms
-          tmp = max( uhm(icrm,k)*dt*sqrt((1./dx)**2+YES3D*(1./dy)**2) , max(wm(icrm,k),wm(icrm,k+1))*dt/(dz(icrm)*adzw(icrm,k)) )
+          tmp = max( uhm(icrm,k)*dt*sqrt((1./dx)**2+YES3D*(1./dy)**2),max(wm(icrm,k),wm(icrm,k+1))*dt/(dz(icrm)*adzw(icrm,k)) )
           cfl = max( cfl , tmp )
         end do
       end do
@@ -121,15 +105,16 @@ module kurant_mod
         call task_abort()
       end if
 
+
 #if defined(_OPENMP)
-      !$omp target exit data map(delete: wm  )
-      !$omp target exit data map(delete: uhm )
+      !$omp target exit data map(delete: wm)
+      !$omp target exit data map(delete: uhm)
 #endif
       deallocate(wm )
       deallocate(uhm)
 
-5550 format('kurant() - cfl: ',f12.2,'  cfl_sgs: ',f12.2,'  lat: ',f6.2,'  lon: ',f6.2)
-5551 format('k: ',i5,'  wm: ',f10.2,'  uhm: ',f10.2,'  tabs: ',f8.2)
+5550 format('kurant() - cfl: ',1pe13.6,'  cfl_sgs: ',1pe13.6,'  lat: ',1pe13.6,'  lon: ',1pe13.6)
+5551 format('k: ',i5,'  wm: ',1pe13.6,'  uhm: ',1pe13.6,'  tabs: ',1pe13.6)
 
    end subroutine kurant
 

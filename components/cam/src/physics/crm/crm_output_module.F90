@@ -1,3 +1,4 @@
+
 module crm_output_module
    use params,       only: crm_rknd
    use crmdims,      only: crm_nx, crm_ny, crm_nz
@@ -548,8 +549,6 @@ contains
       !$omp target update from (crm_output_qs_mean)
       !$omp target update from (crm_output_qg_mean)
       !$omp target update from (crm_output_qr_mean)
-
- 
       !$omp target update from(crm_output_sltend)
       !$omp target update from(crm_output_qltend)
       !$omp target update from(crm_output_qcltend)
@@ -628,7 +627,6 @@ contains
       !$omp target exit data map(delete: crm_output_qs_mean)
       !$omp target exit data map(delete: crm_output_qg_mean)
       !$omp target exit data map(delete: crm_output_qr_mean)
-
       !$omp target exit data map(delete: crm_output_sltend  )
       !$omp target exit data map(delete: crm_output_qltend  )
       !$omp target exit data map(delete: crm_output_qcltend )

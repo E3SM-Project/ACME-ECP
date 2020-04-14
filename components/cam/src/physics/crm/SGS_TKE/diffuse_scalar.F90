@@ -34,13 +34,13 @@ contains
 #if defined(_OPENACC)
     call prefetch(df)
 #elif defined(_OPENMP)
-    !$omp target enter data map(alloc: df )
+    !$omp target enter data map(alloc: df)
 #endif
 
 #if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(4) nowait
+    !$omp target teams distribute parallel do collapse(4)
 #endif
     do k = 1 , nzm
       do j = dimy1_s , dimy2_s
@@ -57,22 +57,20 @@ contains
     else
       call diffuse_scalar2D (ncrms,dimx1_d,dimx2_d,dimy1_d,dimy2_d,grdf_x,       grdf_z,f,fluxb,fluxt,tkh,rho,rhow,flux)
     endif
-
 #if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(2) nowait
+    !$omp target teams distribute parallel do collapse(2)
 #endif
     do k=1,nzm
       do icrm = 1 , ncrms
         fdiff(icrm,k)=0.
       enddo
     enddo
-
 #if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(2) nowait
+    !$omp target teams distribute parallel do collapse(2)
 #endif
     do k=1,nzm
       do j=1,ny
@@ -89,11 +87,9 @@ contains
         end do
       end do
     enddo
-
 #if defined(_OPENMP)
     !$omp target exit data map(delete: df)
 #endif
-
     deallocate( df )
 
   end subroutine diffuse_scalar

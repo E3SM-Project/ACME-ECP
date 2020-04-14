@@ -1,7 +1,3 @@
-
-#define PRINT(var) \
-    write(*,"(A15,z10,I5)") #var, loc(var), icall
-
 module microphysics
   use cloud_mod
   use precip_init_mod
@@ -14,7 +10,7 @@ module microphysics
   use params, only: doprecip, docloud, doclubb, crm_rknd, asyncid
   use micro_params
   implicit none
-  public
+
   !----------------------------------------------------------------------
   !!! required definitions:
 
@@ -65,22 +61,9 @@ module microphysics
   real(crm_rknd), allocatable :: qpsrc(:,:)  ! source of precipitation microphysical processes
   real(crm_rknd), allocatable :: qpevp(:,:)  ! sink of precipitating water due to evaporation
 
-  public :: allocate_micro
-  public :: deallocate_micro
-  public :: micro_init
-  public :: micro_setparm
-  public :: micro_proc
-  public :: micro_diagnose
-  public :: micro_flux
-#ifdef CLUBB_CRM
-  public :: micro_update
-  public :: micro_adjust
-  public :: micro_diagnose_clubb
-#endif
-  public :: term_vel_qp
-  public :: micro_precip_fall
-  public :: precip_fall
+
 CONTAINS
+
 
   subroutine allocate_micro(ncrms)
 #if defined(_OPENACC)
@@ -88,54 +71,37 @@ CONTAINS
 #endif
     implicit none
     integer, intent(in) :: ncrms
-    integer :: icrm, i, j, k
+    integer :: icrm
     real(crm_rknd) :: zero
-    integer, save :: icall = 0
-    icall = icall + 1
-
-    allocate( micro_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields) )
+    allocate( micro_field(ncrms,dimx1_s:dimx2_s, dimy1_s:dimy2_s, nzm, nmicro_fields))
     allocate( fluxbmk(ncrms,nx, ny, 1:nmicro_fields) )
     allocate( fluxtmk(ncrms,nx, ny, 1:nmicro_fields) )
-    allocate( mkwle(ncrms,nz,1:nmicro_fields) )
-    allocate( mkwsb(ncrms,nz,1:nmicro_fields) )
-    allocate( mkadv(ncrms,nz,1:nmicro_fields) )
-    allocate( mkdiff(ncrms,nz,1:nmicro_fields) )
-    allocate( mkname       (nmicro_fields) )
-    allocate( mklongname   (nmicro_fields) )
-    allocate( mkunits      (nmicro_fields) )
-    allocate( mkoutputscale(nmicro_fields) )
-    allocate( qn(ncrms,nx,ny,nzm) )
-    allocate( qpsrc(ncrms,nz) )
-    allocate( qpevp(ncrms,nz) )
+    allocate( mkwle(ncrms,nz,1:nmicro_fields)  )
+    allocate( mkwsb(ncrms,nz,1:nmicro_fields)  )
+    allocate( mkadv(ncrms,nz,1:nmicro_fields)  )
+    allocate( mkdiff(ncrms,nz,1:nmicro_fields)  )
+    allocate( mkname       (nmicro_fields))
+    allocate( mklongname   (nmicro_fields))
+    allocate( mkunits      (nmicro_fields))
+    allocate( mkoutputscale(nmicro_fields))
+    allocate( qn(ncrms,nx,ny,nzm)  )
+    allocate( qpsrc(ncrms,nz)  )
+    allocate( qpevp(ncrms,nz)  )
     allocate( flag_precip    (nmicro_fields) )
 
-    write(*,*) "allocate_micro: before, icall=",icall
-    PRINT(micro_field)
-    PRINT(fluxbmk)
-    PRINT(fluxtmk)
-    PRINT(mkwle)
-    PRINT(mkwsb)
-    PRINT(mkadv)
-    PRINT(mkdiff)
-    PRINT(mkoutputscale)
-    PRINT(qn)
-    PRINT(qpsrc)
-    PRINT(qpevp)
-    PRINT(flag_precip)
-
 #if defined(_OPENACC)
-    call prefetch(micro_field)
-    call prefetch(fluxbmk)
-    call prefetch(fluxtmk)
-    call prefetch(mkwle)
-    call prefetch(mkwsb)
-    call prefetch(mkadv)
-    call prefetch(mkdiff)
-    call prefetch(mkoutputscale)
-    call prefetch(qn)
-    call prefetch(qpsrc)
-    call prefetch(qpevp)
-    call prefetch(flag_precip)
+    call prefetch(micro_field  )
+    call prefetch(fluxbmk   )
+    call prefetch(fluxtmk   )
+    call prefetch(mkwle    )
+    call prefetch(mkwsb    )
+    call prefetch(mkadv    )
+    call prefetch(mkdiff   )
+    call prefetch(mkoutputscale  )
+    call prefetch(qn  )
+    call prefetch(qpsrc  )
+    call prefetch(qpevp  )
+    call prefetch(flag_precip    )
 #elif defined(_OPENMP)
     !$omp target enter data map(alloc: micro_field)
     !$omp target enter data map(alloc: fluxbmk)
@@ -149,22 +115,8 @@ CONTAINS
     !$omp target enter data map(alloc: qpsrc)
     !$omp target enter data map(alloc: qpevp)
     !$omp target enter data map(alloc: flag_precip)
-    write(*,*) "allocate_micro: after, icall=",icall
-    PRINT(micro_field)
-    PRINT(fluxbmk)
-    PRINT(fluxtmk)
-    PRINT(mkwle)
-    PRINT(mkwsb)
-    PRINT(mkadv)
-    PRINT(mkdiff)
-    PRINT(mkoutputscale)
-    PRINT(qn)
-    PRINT(qpsrc)
-    PRINT(qpevp)
-    PRINT(flag_precip)
 #endif
-
-    zero = 0.0_crm_rknd
+    zero = 0
     micro_field = zero
     fluxbmk  = zero
     fluxtmk  = zero
@@ -179,30 +131,40 @@ CONTAINS
     qn = zero
     qpsrc = zero
     qpevp = zero
-    flag_precip(:)  = (/0,1/)
-
-#if defined(_OPENACC)
-    !$acc parallel loop collapse(4) async(asyncid)
-#elif defined(_OPENMP_)
-    !$omp target teams distribute parallel do collapse(4) 
-#endif
-    !do k=1,nmicro_fields
-    !  do j=1,ny
-    !    do i=1,nx
-    !      do icrm=1,ncrms
-    do icrm=1,ncrms
-      do i=1,nx
-        do j=1,ny
-          do k = 1, nmicro_fields
-            fluxbmk(icrm,i,j,k) = 0.0_crm_rknd
-            fluxtmk(icrm,i,j,k) = 0.0_crm_rknd
-          enddo
-        enddo
-      enddo
-    enddo
-write(*,*) "allocate_micro: omp test done, icall=",icall
+    flag_precip    (:)  = (/0,1/)
   end subroutine allocate_micro
 
+#if defined(_OPENMP)
+  subroutine update_device_micro()
+    !$omp target update to( micro_field)
+    !$omp target update to( fluxbmk)
+    !$omp target update to( fluxtmk)
+    !$omp target update to( mkwle)
+    !$omp target update to( mkwsb)
+    !$omp target update to( mkadv)
+    !$omp target update to( mkdiff)
+    !$omp target update to( mkoutputscale)
+    !$omp target update to( qn)
+    !$omp target update to( qpsrc)
+    !$omp target update to( qpevp)
+    !$omp target update to( flag_precip)
+  end subroutine update_device_micro
+
+  subroutine update_host_micro()
+    !$omp target update from( micro_field)
+    !$omp target update from( fluxbmk)
+    !$omp target update from( fluxtmk)
+    !$omp target update from( mkwle)
+    !$omp target update from( mkwsb)
+    !$omp target update from( mkadv)
+    !$omp target update from( mkdiff)
+    !$omp target update from( mkoutputscale)
+    !$omp target update from( qn)
+    !$omp target update from( qpsrc)
+    !$omp target update from( qpevp)
+    !$omp target update from( flag_precip)
+  end subroutine update_host_micro
+#endif
 
   subroutine deallocate_micro()
     implicit none
@@ -248,6 +210,8 @@ write(*,*) "allocate_micro: omp test done, icall=",icall
 
   !----------------------------------------------------------------------
   !!! Initialize microphysics:
+
+
   subroutine micro_init(ncrms)
 
 #ifdef CLUBB_CRM
@@ -271,6 +235,7 @@ write(*,*) "allocate_micro: omp test done, icall=",icall
     !  end if
 #endif
 
+
     a_bg = 1./(tbgmax-tbgmin)
     a_pr = 1./(tprmax-tprmin)
     a_gr = 1./(tgrmax-tgrmin)
@@ -278,36 +243,27 @@ write(*,*) "allocate_micro: omp test done, icall=",icall
     if(nrestart.eq.0) then
 
 #ifndef CRM
-      micro_field(:,:,:,:,:) = 0.0_crm_rknd
+      micro_field(:,:,:,:,:) = 0.
       do k=1,nzm
         micro_field(:,:,:,k,1) = q0(:,k)
       end do
-      qn(:,:,:,:) = 0.0_crm_rknd
+      qn(:,:,:,:) = 0.
 #endif
-write(*,*) "micro_init: no omp so far"
-
 #if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(4) 
+    !$omp target teams distribute parallel do collapse(4)
 #endif
     do l=1,nmicro_fields
       do j=1,ny
         do i=1,nx
           do icrm=1,ncrms
-   ! do icrm=1,ncrms
-   !   do i=1,nx
-   !     do j=1,ny
-   !       do l = 1, nmicro_fields
-            fluxbmk(icrm,i,j,l) = 0.0_crm_rknd
-            fluxtmk(icrm,i,j,l) = 0.0_crm_rknd
+            fluxbmk(icrm,i,j,l) = 0.
+            fluxtmk(icrm,i,j,l) = 0.
           enddo
         enddo
       enddo
     enddo
-
-write(*,*) "micro_init: before cloud"
-return
 
 #ifdef CLUBB_CRM
       if ( docloud .or. doclubb ) then
@@ -317,27 +273,20 @@ return
 #ifndef CRM
         call cloud(ncrms,micro_field(:,:,:,:,1),micro_field(:,:,:,:,2),qn)
 #endif
-write(*,*) "micro_init: before diagnose"
         call micro_diagnose(ncrms)
       end if
       if(dosmoke) then
         call micro_diagnose(ncrms)
       end if
     end if
-
-write(*,*) "micro_init: after diagnose"
-
 #if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(3) nowait
+    !$omp target teams distribute parallel do collapse(3)
 #endif
-  !  do l=1,nmicro_fields
-  !    do k=1,nz
-  !      do icrm = 1 , ncrms
-    do icrm = 1, ncrms
+    do l=1,nmicro_fields
       do k=1,nz
-        do l = 1, nmicro_fields
+        do icrm = 1 , ncrms
           mkwle (icrm,k,l) = 0.
           mkwsb (icrm,k,l) = 0.
           mkadv (icrm,k,l) = 0.
@@ -345,17 +294,13 @@ write(*,*) "micro_init: after diagnose"
         enddo
       enddo
     enddo
-write(*,*) "micro_init: mkdiff"
-
 #if defined(_OPENACC)
     !$acc parallel loop collapse(2) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(2) nowait
+    !$omp target teams distribute parallel do collapse(2)
 #endif
-   ! do k=1,nz
-   !   do icrm=1,ncrms
-    do icrm=1,ncrms
-      do k=1,nz
+    do k=1,nz
+      do icrm=1,ncrms
         qpsrc(icrm,k) = 0.
         qpevp(icrm,k) = 0.
       enddo
@@ -370,7 +315,12 @@ write(*,*) "micro_init: mkdiff"
     mklongname(2) = 'PRECIPITATING WATER'
     mkunits(2) = 'g/kg'
     mkoutputscale(2) = 1.e3
-write(*,*) "micro_init: done!"
+#if defined(_OPENMP)
+    !$omp target update to (mkname)
+    !$omp target update to (mklongname)
+    !$omp target update to (mkunits)
+    !$omp target update to (mkoutputscale)
+#endif
   end subroutine micro_init
 
   !----------------------------------------------------------------------
@@ -396,7 +346,7 @@ write(*,*) "micro_init: done!"
 #if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(3) nowait
+    !$omp target teams distribute parallel do collapse(3)
 #endif
     do j = 1 , ny
       do i = 1 , nx
@@ -406,11 +356,10 @@ write(*,*) "micro_init: done!"
       enddo
     enddo
 #endif
-
 #if defined(_OPENACC)
     !$acc parallel loop collapse(3) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(3) nowait
+    !$omp target teams distribute parallel do collapse(3)
 #endif
     do j = 1 , ny
       do i = 1 , nx
@@ -476,16 +425,12 @@ write(*,*) "micro_init: done!"
 #if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(4) nowait
+    !$omp target teams distribute parallel do collapse(4)
 #endif
-   ! do k=1,nzm
-   !   do j=1,ny
-   !     do i=1,nx
-   !       do icrm = 1 , ncrms
-    do icrm = 1, ncrms
-      do i = 1, nx
-        do j = 1, ny
-          do k = 1 , nzm
+    do k=1,nzm
+      do j=1,ny
+        do i=1,nx
+          do icrm = 1 , ncrms
             qv(icrm,i,j,k) = micro_field(icrm,i,j,k,1) - qn(icrm,i,j,k)
             omn = max(real(0.,crm_rknd),min(real(1.,crm_rknd),(tabs(icrm,i,j,k)-tbgmin)*a_bg))
             qcl(icrm,i,j,k) = qn(icrm,i,j,k)*omn
@@ -594,8 +539,12 @@ write(*,*) "micro_init: done!"
   ! In this particular case there is only one precipitating variable.
 
   subroutine term_vel_qp(ncrms,icrm,i,j,k,ind,qploc,rho,tabs,qp_threshold,tprmin,&
-                                      a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow,term_vel)
+                         a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow,term_vel)
+#if defined(_OPENACC)
     !$acc routine seq
+#elif defined(_OPENMP)
+    !$omp declare target
+#endif
     implicit none
     integer, intent(in) :: ncrms,icrm
     integer, intent(in) :: i,j,k,ind
@@ -647,7 +596,7 @@ write(*,*) "micro_init: done!"
 #if defined(_OPENACC)
     call prefetch( omega )
 #elif defined(_OPENMP)
-    !$omp target enter data map(alloc: omega)
+    !$omp target enter data map (alloc: omega)
 #endif
 
     crain = b_rain / 4.
@@ -656,11 +605,10 @@ write(*,*) "micro_init: done!"
     vrain = a_rain * gamr3 / 6. / (pi * rhor * nzeror) ** crain
     vsnow = a_snow * gams3 / 6. / (pi * rhos * nzeros) ** csnow
     vgrau = a_grau * gamg3 / 6. / (pi * rhog * nzerog) ** cgrau
-
 #if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(4) nowait
+    !$omp target teams distribute parallel do collapse(4)
 #endif
     do k=1,nzm
       do j=1,ny
@@ -673,7 +621,6 @@ write(*,*) "micro_init: done!"
     end do
 
     call precip_fall(ncrms, 2, omega, ind)
-
 #if defined(_OPENMP)
     !$omp target exit data map(delete: omega)
 #endif
@@ -715,6 +662,7 @@ write(*,*) "micro_init: done!"
     real(crm_rknd) :: lat_heat, wmax
     integer nprec, iprec
     real(crm_rknd) :: flagstat, tmp
+    real(crm_rknd) :: mx_temp, mn_temp
 
     !Statement functions
     pp(y)= max(real(0.,crm_rknd),y)
@@ -733,7 +681,7 @@ write(*,*) "micro_init: done!"
     allocate( irhoadz(ncrms,nzm) )
     allocate( iwmax  (ncrms,nzm) )
     allocate( rhofac (ncrms,nzm) )
-#if defined(_OPENACC)    
+#if defined(_OPENACC)
     call prefetch( mx      )
     call prefetch( mn      )
     call prefetch( lfac    )
@@ -745,22 +693,21 @@ write(*,*) "micro_init: done!"
     call prefetch( iwmax   )
     call prefetch( rhofac  )
 #elif defined(_OPENMP)
-    !$omp target enter data map(alloc: mx )
-    !$omp target enter data map(alloc: mn )
-    !$omp target enter data map(alloc: lfac )
-    !$omp target enter data map(alloc: www )
-    !$omp target enter data map(alloc: fz )
-    !$omp target enter data map(alloc: wp )
-    !$omp target enter data map(alloc: tmp_qp )
-    !$omp target enter data map(alloc: irhoadz )
-    !$omp target enter data map(alloc: iwmax )
-    !$omp target enter data map(alloc: rhofac )
+    !$omp target enter data map(alloc: mx)
+    !$omp target enter data map(alloc: mn)
+    !$omp target enter data map(alloc: lfac)
+    !$omp target enter data map(alloc: www)
+    !$omp target enter data map(alloc: fz)
+    !$omp target enter data map(alloc: wp)
+    !$omp target enter data map(alloc: tmp_qp)
+    !$omp target enter data map(alloc: irhoadz)
+    !$omp target enter data map(alloc: iwmax)
+    !$omp target enter data map(alloc: rhofac)
 #endif
-
 #if defined(_OPENACC)
     !$acc parallel loop gang vector collapse(2) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(2) nowait 
+    !$omp target teams distribute parallel do collapse(2)
 #endif
     do k = 1,nzm
       do icrm = 1 , ncrms
@@ -777,7 +724,7 @@ write(*,*) "micro_init: done!"
 #if defined(_OPENACC)
     !$acc parallel loop gang vector collapse(4) reduction(max:prec_cfl) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(4) reduction(max:prec_cfl) nowait
+    !$omp target teams distribute parallel do collapse(4) reduction(max: prec_cfl)
 #endif
     do k=1,nzm
       do j=1,ny
@@ -803,12 +750,13 @@ write(*,*) "micro_init: done!"
               endif
             end select
             call  term_vel_qp(ncrms,icrm,i,j,k,ind,micro_field(icrm,i,j,k,2),rho(1,1),&
-                                                      tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,&
-                                                      a_gr,vgrau,cgrau,vsnow,csnow,tmp)
+                              tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,&
+                              a_gr,vgrau,cgrau,vsnow,csnow,tmp)
             wp(icrm,i,j,k)=rhofac(icrm,k)*tmp
             tmp = wp(icrm,i,j,k)*iwmax(icrm,k)
             prec_cfl = max(prec_cfl,tmp) ! Keep column maximum CFL
-            wp(icrm,i,j,k) = -wp(icrm,i,j,k)*rhow(icrm,k)*dtn/dz(icrm)
+            tmp = -wp(icrm,i,j,k)*rhow(icrm,k)*dtn/dz(icrm)
+            wp(icrm,i,j,k) = tmp   !-wp(icrm,i,j,k)*rhow(icrm,k)*dtn/dz(icrm)
             if (k == 1) then
               fz(icrm,i,j,nz)=0.
               www(icrm,i,j,nz)=0.
@@ -826,7 +774,7 @@ write(*,*) "micro_init: done!"
 #if defined(_OPENACC)
       !$acc parallel loop gang vector collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(4) nowait 
+      !$omp target teams distribute parallel do collapse(4)
 #endif
       do k = 1,nzm
         do j=1,ny
@@ -834,6 +782,11 @@ write(*,*) "micro_init: done!"
             do icrm = 1 , ncrms
               ! wp already includes factor of dt, so reduce it by a
               ! factor equal to the number of precipitation steps.
+#if defined(_OPENACC)
+              !$acc atomic update
+#elif defined(_OPENMP)
+              !$omp atomic update
+#endif
               wp(icrm,i,j,k) = wp(icrm,i,j,k)/real(nprec,crm_rknd)
             enddo
           enddo
@@ -848,7 +801,7 @@ write(*,*) "micro_init: done!"
 #if defined(_OPENACC)
       !$acc parallel loop gang vector collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(4) nowait
+      !$omp target teams distribute parallel do collapse(4)
 #endif
       do k = 1,nzm
         do j=1,ny
@@ -859,11 +812,10 @@ write(*,*) "micro_init: done!"
           enddo
         enddo
       enddo
-
 #if defined(_OPENACC)
       !$acc parallel loop gang vector collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(4) nowait
+      !$omp target teams distribute parallel do collapse(4)
 #endif
       do k=1,nzm
         do j=1,ny
@@ -881,27 +833,30 @@ write(*,*) "micro_init: done!"
           enddo
         enddo
       enddo
-
 #if defined(_OPENACC)
       !$acc parallel loop gang vector collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(4) nowait 
+      !$omp target teams distribute parallel do collapse(4)
 #endif
       do k=1,nzm
         do j=1,ny
           do i=1,nx
             do icrm = 1 , ncrms
               kc=k+1
+#if defined(_OPENACC)
+              !$acc atomic update
+#elif defined(_OPENMP)
+              !$omp atomic update
+#endif
               tmp_qp(icrm,i,j,k)=tmp_qp(icrm,i,j,k)-(fz(icrm,i,j,kc)-fz(icrm,i,j,k))*irhoadz(icrm,k) !Update temporary qp
             enddo
           enddo
         enddo
       enddo
-
 #if defined(_OPENACC)
       !$acc parallel loop gang vector collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(4) nowait
+      !$omp target teams distribute parallel do collapse(4)
 #endif
       do k=1,nzm
         do j=1,ny
@@ -927,7 +882,7 @@ write(*,*) "micro_init: done!"
 #if defined(_OPENACC)
         !$acc parallel loop gang vector collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-        !$omp target teams distribute parallel do collapse(4) nowait
+        !$omp target teams distribute parallel do collapse(4)
 #endif
         do k=1,nzm
           do j=1,ny
@@ -935,20 +890,23 @@ write(*,*) "micro_init: done!"
               do icrm = 1 , ncrms
                 kc=min(nzm,k+1)
                 kb=max(1,k-1)
-                mx(icrm,i,j,k)=max(tmp_qp(icrm,i,j,kb),tmp_qp(icrm,i,j,kc),tmp_qp(icrm,i,j,k),mx(icrm,i,j,k))
-                mn(icrm,i,j,k)=min(tmp_qp(icrm,i,j,kb),tmp_qp(icrm,i,j,kc),tmp_qp(icrm,i,j,k),mn(icrm,i,j,k))
+                mx_temp = max(tmp_qp(icrm,i,j,kb),tmp_qp(icrm,i,j,kc),tmp_qp(icrm,i,j,k),mx(icrm,i,j,k))
+                mx(icrm,i,j,k)= mx_temp !max(tmp_qp(icrm,i,j,kb),tmp_qp(icrm,i,j,kc),tmp_qp(icrm,i,j,k),mx(icrm,i,j,k))
+                mn_temp = min(tmp_qp(icrm,i,j,kb),tmp_qp(icrm,i,j,kc),tmp_qp(icrm,i,j,k),mn(icrm,i,j,k))
+                mn(icrm,i,j,k) = mn_temp !min(tmp_qp(icrm,i,j,kb),tmp_qp(icrm,i,j,kc),tmp_qp(icrm,i,j,k),mn(icrm,i,j,k))
                 kc=min(nzm,k+1)
-                mx(icrm,i,j,k)=rho(icrm,k)*adz(icrm,k)*(mx(icrm,i,j,k)-tmp_qp(icrm,i,j,k))/(pn(www(icrm,i,j,kc)) + pp(www(icrm,i,j,k))+eps)
-                mn(icrm,i,j,k)=rho(icrm,k)*adz(icrm,k)*(tmp_qp(icrm,i,j,k)-mn(icrm,i,j,k))/(pp(www(icrm,i,j,kc)) + pn(www(icrm,i,j,k))+eps)
+                mx_temp = rho(icrm,k)*adz(icrm,k)*(mx(icrm,i,j,k)-tmp_qp(icrm,i,j,k))/(pn(www(icrm,i,j,kc)) + pp(www(icrm,i,j,k))+eps)
+                mx(icrm,i,j,k) = mx_temp   !rho(icrm,k)*adz(icrm,k)*(mx(icrm,i,j,k)-tmp_qp(icrm,i,j,k))/(pn(www(icrm,i,j,kc)) + pp(www(icrm,i,j,k))+eps)
+                mn_temp = rho(icrm,k)*adz(icrm,k)*(tmp_qp(icrm,i,j,k)-mn(icrm,i,j,k))/(pp(www(icrm,i,j,kc)) + pn(www(icrm,i,j,k))+eps)
+                mn(icrm,i,j,k) = mn_temp !rho(icrm,k)*adz(icrm,k)*(tmp_qp(icrm,i,j,k)-mn(icrm,i,j,k))/(pp(www(icrm,i,j,kc)) + pn(www(icrm,i,j,k))+eps)
               enddo
             enddo
           enddo
         enddo
-
 #if defined(_OPENACC)
         !$acc parallel loop gang vector collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-        !$omp target teams distribute parallel do collapse(4) nowait
+        !$omp target teams distribute parallel do collapse(4)
 #endif
         do k=1,nzm
           do j=1,ny
@@ -956,6 +914,11 @@ write(*,*) "micro_init: done!"
               do icrm = 1 , ncrms
                 kb=max(1,k-1)
                 ! Add limited flux correction to fz(k).
+#if defined(_OPENACC)
+                !$acc atomic update
+#elif defined(_OPENMP)
+                !$omp atomic update
+#endif
                 fz(icrm,i,j,k) = fz(icrm,i,j,k) + pp(www(icrm,i,j,k))*min(real(1.,crm_rknd),mx(icrm,i,j,k), mn(icrm,i,j,kb)) - &
                                                   pn(www(icrm,i,j,k))*min(real(1.,crm_rknd),mx(icrm,i,j,kb),mn(icrm,i,j,k)) ! Anti-diffusive flux
               enddo
@@ -966,11 +929,10 @@ write(*,*) "micro_init: done!"
 
       ! Update precipitation mass fraction and liquid-ice static
       ! energy using precipitation fluxes computed in this column.
-
 #if defined(_OPENACC)
       !$acc parallel loop gang vector collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(4) nowait 
+      !$omp target teams distribute parallel do collapse(4)
 #endif
       do j=1,ny
         do i=1,nx
@@ -980,32 +942,57 @@ write(*,*) "micro_init: done!"
               ! Update precipitation mass fraction.
               ! Note that fz is the total flux, including both the
               ! upwind flux and the anti-diffusive correction.
+#if defined(_OPENACC)
+              !$acc atomic update
+#elif defined(_OPENMP)
+              !$omp atomic update
+#endif
               micro_field(icrm,i,j,k,2)=micro_field(icrm,i,j,k,2)-(fz(icrm,i,j,kc)-fz(icrm,i,j,k))*irhoadz(icrm,k)
               tmp = -(fz(icrm,i,j,kc)-fz(icrm,i,j,k))*irhoadz(icrm,k)*flagstat  ! For qp budget
 #if defined(_OPENACC)
               !$acc atomic update
 #elif defined(_OPENMP)
-              !!!$omp atomic update
+              !$omp atomic update
 #endif
               qpfall(icrm,k)=qpfall(icrm,k)+tmp
               lat_heat = -(lfac(icrm,i,j,kc)*fz(icrm,i,j,kc)-lfac(icrm,i,j,k)*fz(icrm,i,j,k))*irhoadz(icrm,k)
+#if defined(_OPENACC)
+              !$acc atomic update
+#elif defined(_OPENMP)
+              !$omp atomic update
+#endif
               t(icrm,i,j,k)=t(icrm,i,j,k)-lat_heat
 #if defined(_OPENACC)
               !$acc atomic update
 #elif defined(_OPENMP)
-             !!! !$omp atomic update
+              !$omp atomic update
 #endif
               tlat(icrm,k)=tlat(icrm,k)-lat_heat            ! For energy budget
               tmp = fz(icrm,i,j,k)*flagstat
 #if defined(_OPENACC)
               !$acc atomic update
 #elif defined(_OPENMP)
-             !!! !$omp atomic update
+              !$omp atomic update
 #endif
               precflux(icrm,k) = precflux(icrm,k) - tmp   ! For statistics
               if (k == 1) then
+#if defined(_OPENACC)
+              !$acc atomic update
+#elif defined(_OPENMP)
+              !$omp atomic update
+#endif
                 precsfc(icrm,i,j) = precsfc(icrm,i,j) - fz(icrm,i,j,1)*flagstat ! For statistics
+#if defined(_OPENACC)
+              !$acc atomic update
+#elif defined(_OPENMP)
+              !$omp atomic update
+#endif
                 precssfc(icrm,i,j) = precssfc(icrm,i,j) - fz(icrm,i,j,1)*(1.-omega(icrm,i,j,1))*flagstat ! For statistics
+#if defined(_OPENACC)
+              !$acc atomic update
+#elif defined(_OPENMP)
+              !$omp atomic update
+#endif
                 prec_xy(icrm,i,j) = prec_xy(icrm,i,j) - fz(icrm,i,j,1)*flagstat ! For 2D output
               endif
             enddo
@@ -1018,7 +1005,7 @@ write(*,*) "micro_init: done!"
 #if defined(_OPENACC)
         !$acc parallel loop gang vector collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-        !$omp target teams distribute parallel do collapse(4) nowait
+        !$omp target teams distribute parallel do collapse(4)
 #endif
         do j=1,ny
           do i=1,nx
@@ -1029,7 +1016,8 @@ write(*,*) "micro_init: done!"
                                  tabs(1,1,1,1),qp_threshold,tprmin,a_pr,vrain,crain,tgrmin,a_gr,vgrau,cgrau,vsnow,csnow,tmp)
                 wp(icrm,i,j,k) = rhofac(icrm,k)*tmp
                 ! Decrease precipitation velocity by factor of nprec
-                wp(icrm,i,j,k) = -wp(icrm,i,j,k)*rhow(icrm,k)*dtn/dz(icrm)/real(nprec,crm_rknd)
+                tmp = -wp(icrm,i,j,k)*rhow(icrm,k)*dtn/dz(icrm)/real(nprec,crm_rknd)
+                wp(icrm,i,j,k) = tmp  !-wp(icrm,i,j,k)*rhow(icrm,k)*dtn/dz(icrm)/real(nprec,crm_rknd)
                 ! Note: Don't bother checking CFL condition at each
                 ! substep since it's unlikely that the CFL will
                 ! increase very much between substeps when using
@@ -1046,20 +1034,18 @@ write(*,*) "micro_init: done!"
       endif
 
     enddo
-    
 #if defined(_OPENMP)
-    !$omp target exit data map(delete: mx      )
-    !$omp target exit data map(delete: mn      )
-    !$omp target exit data map(delete: lfac    )
-    !$omp target exit data map(delete: www     )
-    !$omp target exit data map(delete: fz      )
-    !$omp target exit data map(delete: wp      )
-    !$omp target exit data map(delete: tmp_qp  )
-    !$omp target exit data map(delete: irhoadz )
-    !$omp target exit data map(delete: iwmax   )
-    !$omp target exit data map(delete: rhofac  )
-#endif
-
+    !$omp target exit data map(delete: mx)
+    !$omp target exit data map(delete: mn)
+    !$omp target exit data map(delete: lfac)
+    !$omp target exit data map(delete: www)
+    !$omp target exit data map(delete: fz)
+    !$omp target exit data map(delete: wp)
+    !$omp target exit data map(delete: tmp_qp)
+    !$omp target exit data map(delete: irhoadz)
+    !$omp target exit data map(delete: iwmax)
+    !$omp target exit data map(delete: rhofac)
+#endif    
     deallocate( mx      )
     deallocate( mn      )
     deallocate( lfac    )
@@ -1072,10 +1058,12 @@ write(*,*) "micro_init: done!"
     deallocate( rhofac  )
 
   end subroutine precip_fall
+
   !----------------------------------------------------------------------
   ! called when stepout() called
 
   !-----------------------------------------------------------------------
   ! Supply function that computes total water in a domain:
   !
+
 end module microphysics

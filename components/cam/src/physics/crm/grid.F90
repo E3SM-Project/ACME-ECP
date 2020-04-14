@@ -1,3 +1,4 @@
+
 module grid
   use domain
   use advection, only: NADV, NADVS
@@ -163,6 +164,10 @@ module grid
   !-----------------------------------------
   public :: allocate_grid
   public :: deallocate_grid
+#if defined(_OPENMP)
+  public :: update_host_grid
+  public :: update_device_grid
+#endif
 contains
 
   subroutine allocate_grid(ncrms)
@@ -214,6 +219,32 @@ contains
     dt3 = zero
     dz = zero
   end subroutine allocate_grid
+
+#if defined(_OPENMP)
+  subroutine update_device_grid()
+    implicit none
+    !$omp target update to( z )
+    !$omp target update to( pres )
+    !$omp target update to( zi )
+    !$omp target update to( presi )
+    !$omp target update to( adz )
+    !$omp target update to( adzw )
+    !$omp target update to( dt3 )
+    !$omp target update to( dz )
+  end subroutine update_device_grid
+
+  subroutine update_host_grid()
+    implicit none
+    !$omp target update from( z )
+    !$omp target update from( pres )
+    !$omp target update from( zi )
+    !$omp target update from( presi )
+    !$omp target update from( adz )
+    !$omp target update from( adzw )
+    !$omp target update from( dt3 )
+    !$omp target update from( dz )
+  end subroutine update_host_grid
+#endif
 
   subroutine deallocate_grid()
     implicit none
