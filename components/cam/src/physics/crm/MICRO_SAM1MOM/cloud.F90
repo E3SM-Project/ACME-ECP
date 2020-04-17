@@ -39,7 +39,7 @@ contains
     !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
     !$omp target teams distribute parallel do collapse(4) schedule(static) nowait &
-    !$omp depend(in: t, qp, pres, gamaz) depend(out: qn) depend(inout: tabs, q)
+    !$omp depend(in: t, pres, gamaz) depend(out: qn) depend(inout: tabs, q, qp)
 #endif
     do k = 1, nzm
       do j = 1, ny
