@@ -25,6 +25,8 @@ contains
     real(crm_rknd) fff,dfff,qsatt,qsatt0,tabs10,dqsat
     real(crm_rknd) lstarn,dlstarn,lstarp,dlstarp
     integer niter
+    integer, parameter :: maxiter = 10
+
     integer, save :: icall = 0
     icall = icall + 1
 
@@ -39,13 +41,14 @@ contains
 #if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(3) &
+    !$omp target teams distribute parallel do collapse(4) &
     !$omp private(qsatt0,dtabs,qsatt,tabs10,tabs1,niter)
 #endif
     do k = 1, nzm
       do j = 1, ny
         do i = 1, nx
           do icrm = 1 , ncrms
+            qp(icrm,i,j,k) = max(real(0.,crm_rknd),qp(icrm,i,j,k)) ! just in case
             q(icrm,i,j,k)=max(real(0.,crm_rknd),q(icrm,i,j,k))
             ! Initial guess for temperature assuming no cloud water/ice:
             tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(icrm,k)
@@ -66,10 +69,9 @@ contains
 
             qsatt0 = qsatt
             tabs10 = tabs1
-
             niter = 0
             dtabs = 100.
-            do while(niter.lt.10)
+            do while(niter.lt.maxiter)
               if(tabs1.ge.tbgmax) then
                 om=1.
                 lstarn=fac_cond
@@ -108,7 +110,8 @@ contains
               niter=niter+1
               tabs1=tabs1+dtabs
 
-              if(niter == 9) then
+              ! if condensation is possible:
+              if(niter >= maxiter-1) then
                 if(q(icrm,i,j,k).gt.qsatt0) then
                   tabs(icrm,i,j,k) = tabs1
                   qsatt = qsatt + dqsat * dtabs
@@ -118,7 +121,7 @@ contains
                   qn(icrm,i,j,k) = 0.
                 endif
               endif
-            enddo
+           enddo
           end do
         end do
       end do
