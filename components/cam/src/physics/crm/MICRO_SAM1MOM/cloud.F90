@@ -22,11 +22,12 @@ contains
     integer i,j,k, kb, kc,icrm
     real(crm_rknd) dtabs, tabs1, an, bn, ap, bp, om, ag, omp
     real(crm_rknd) fac1,fac2
-    real(crm_rknd) fff,dfff,qsatt,qsatt0,dqsat
+    real(crm_rknd) fff,dfff,qsatt,qsatt0,tabs10,dqsat
     real(crm_rknd) lstarn,dlstarn,lstarp,dlstarp
-    integer niter, maxiter
+    integer niter
+    integer, save :: icall = 0
+    icall = icall + 1
 
-    maxiter = 10
     an = 1./(tbgmax-tbgmin)
     bn = tbgmin * an
     ap = 1./(tprmax-tprmin)
@@ -38,18 +39,13 @@ contains
 #if defined(_OPENACC)
     !$acc parallel loop collapse(4) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(4) schedule(static) nowait &
-    !$omp depend(in: t, pres, gamaz) depend(out: qn) depend(inout: tabs, q, qp)
+    !$omp target teams distribute parallel do collapse(3) &
+    !$omp private(qsatt0,dtabs,qsatt,tabs10,tabs1,niter)
 #endif
     do k = 1, nzm
       do j = 1, ny
         do i = 1, nx
           do icrm = 1 , ncrms
-#if defined(_OPENACC)
-            !$acc atomic update
-#elif defined(_OPENMP)
-            !$omp atomic update
-#endif
             q(icrm,i,j,k)=max(real(0.,crm_rknd),q(icrm,i,j,k))
             ! Initial guess for temperature assuming no cloud water/ice:
             tabs(icrm,i,j,k) = t(icrm,i,j,k)-gamaz(icrm,k)
@@ -69,8 +65,11 @@ contains
             endif
 
             qsatt0 = qsatt
+            tabs10 = tabs1
+
+            niter = 0
             dtabs = 100.
-            do niter = 1, maxiter
+            do while(niter.lt.10)
               if(tabs1.ge.tbgmax) then
                 om=1.
                 lstarn=fac_cond
@@ -103,43 +102,27 @@ contains
                 lstarp=fac_cond+(1.-omp)*fac_fus
                 dlstarp=ap*fac_fus
               endif
-              fff   = tabs(icrm,i,j,k)-tabs1+lstarn*(q(icrm,i,j,k)-qsatt)+lstarp*qp(icrm,i,j,k)
-              dfff  = dlstarn*(q(icrm,i,j,k)-qsatt)+dlstarp*qp(icrm,i,j,k)-lstarn*dqsat-1.
-              dtabs = -fff/dfff
-#if defined(_OPENACC)
-              !$acc atomic update
-#elif defined(_OPENMP)
-              !$omp atomic update
-#endif
+              fff = tabs(icrm,i,j,k)-tabs1+lstarn*(q(icrm,i,j,k)-qsatt)+lstarp*qp(icrm,i,j,k)
+              dfff=dlstarn*(q(icrm,i,j,k)-qsatt)+dlstarp*qp(icrm,i,j,k)-lstarn*dqsat-1.
+              dtabs=-fff/dfff
+              niter=niter+1
               tabs1=tabs1+dtabs
-#if defined(_OPENACC)
-              !$acc atomic update
-#elif defined(_OPENMP)
-              !$omp atomic update
-#endif
-              qsatt = qsatt + dqsat * dtabs
-            end do
 
-            !  if condensation is possible:
-            if(q(icrm,i,j,k).gt.qsatt0) then
-              qn(icrm,i,j,k) = max(real(0.,crm_rknd),q(icrm,i,j,k)-qsatt)
-              tabs(icrm,i,j,k) = tabs1
-            else
-              qn(icrm,i,j,k) = 0.
-            endif
-#if defined(_OPENACC)
-            !$acc atomic update
-#elif defined(_OPENMP)
-            !$omp atomic update
-#endif
-            qp(icrm,i,j,k) = max(real(0.,crm_rknd),qp(icrm,i,j,k)) ! just in case
+              if(niter == 9) then
+                if(q(icrm,i,j,k).gt.qsatt0) then
+                  tabs(icrm,i,j,k) = tabs1
+                  qsatt = qsatt + dqsat * dtabs
+                  qn(icrm,i,j,k) = max(real(0.,crm_rknd),q(icrm,i,j,k)-qsatt)
+                else
+                  tabs(icrm,i,j,k) = tabs10
+                  qn(icrm,i,j,k) = 0.
+                endif
+              endif
+            enddo
           end do
         end do
       end do
     end do
-#if defined(_OPENMP)
- !$omp taskwait
-#endif
   end subroutine cloud
 
 end module cloud_mod
