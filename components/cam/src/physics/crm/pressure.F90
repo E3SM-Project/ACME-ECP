@@ -153,17 +153,25 @@ contains
 #if defined(_OPENACC)
     !$acc parallel loop gang vector collapse(3) private(work,ftmp_x) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(3) private(work, ftmp_x)
+    !$omp target teams distribute 
 #endif
     do k=1,nzslab
+#if defined(_OPENMP)
+      !$omp parallel do collapse(2) ordered private(work,ftmp_x)
+#endif
       do j = 1 , ny_gl
         do icrm = 1 , ncrms
 #if defined(_OPENACC)
           !$acc cache(ftmp_x,work)
+#elif defined(_OPENMP)
+          !$omp ordered
 #endif
           ftmp_x = f(icrm,:,j,k)
           call fft991_crm(ftmp_x,work,trigxi,ifaxi,1,nx2,nx_gl,1,-1)
           f(icrm,:,j,k) = ftmp_x
+#if defined(_OPENMP)
+          !$omp end ordered
+#endif
         enddo
       enddo
     enddo
@@ -171,17 +179,25 @@ contains
 #if defined(_OPENACC)
       !$acc parallel loop gang vector collapse(3) private(work,ftmp_y) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(3) private(work, ftmp_y)
+      !$omp target teams distribute 
 #endif
       do k=1,nzslab
+#if defined(_OPENMP)
+        !$omp parallel do collapse(2) ordered private(work,ftmp_y)
+#endif
         do i = 1 , nx_gl+1
           do icrm = 1 , ncrms
 #if defined(_OPENACC)
             !$acc cache(ftmp_y,work)
+#elif defined(_OPENMP)
+            !$omp ordered
 #endif
             ftmp_y = f(icrm,i,:,k)
             call fft991_crm(ftmp_y,work,trigxj,ifaxj,1,nx2,ny_gl,1,-1)
             f(icrm,i,:,k) = ftmp_y
+#if defined(_OPENMP)
+            !$omp end ordered
+#endif
           enddo
         enddo
       enddo
@@ -322,17 +338,25 @@ contains
 #if defined(_OPENACC)
       !$acc parallel loop gang vector collapse(3) private(ftmp_y,work) async(asyncid)
 #elif defined(_OPENMP)
-      !$omp target teams distribute parallel do collapse(3) 
+      !$omp target teams distribute
 #endif
       do k=1,nzslab
+#if defined(_OPENMP)
+        !$omp parallel do collapse(2) ordered private(ftmp_y,work)
+#endif
         do i = 1 , nx_gl+1
           do icrm = 1 , ncrms
 #if defined(_OPENACC)
             !$acc cache(ftmp_y,work)
+#elif defined(_OPENMP)
+            !$omp ordered
 #endif
             ftmp_y = f(icrm,i,:,k)
             call fft991_crm(ftmp_y,work,trigxj,ifaxj,1,nx2,ny_gl,1,+1)
             f(icrm,i,:,k) = ftmp_y
+#if defined(_OPENMP)
+            !$omp end ordered
+#endif
           enddo
         enddo
       enddo
@@ -340,17 +364,25 @@ contains
 #if defined(_OPENACC)
     !$acc parallel loop gang vector collapse(3) private(ftmp_x,work) async(asyncid)
 #elif defined(_OPENMP)
-    !$omp target teams distribute parallel do collapse(3) private(ftmp_x, work)
+    !$omp target teams distribute 
 #endif
     do k=1,nzslab
+#if defined(_OPENMP)
+      !$omp parallel do collapse(2) ordered private(ftmp_x,work)
+#endif
       do j = 1 , ny_gl
         do icrm = 1 , ncrms
 #if defined(_OPENACC)
           !$acc cache(ftmp_x,work)
+#elif defined(_OPENMP)
+          !$omp ordered
 #endif
           ftmp_x = f(icrm,:,j,k)
           call fft991_crm(ftmp_x,work,trigxi,ifaxi,1,nx2,nx_gl,1,+1)
           f(icrm,:,j,k) = ftmp_x
+#if defined(_OPENMP)
+          !$omp end ordered
+#endif
         enddo
       enddo
     enddo
