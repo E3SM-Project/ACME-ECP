@@ -133,6 +133,7 @@ module gllfvremap_mod
      module procedure gfr_dyn_to_fv_phys_topo_hybrid
      module procedure gfr_dyn_to_fv_phys_topo_dom_mt
      module procedure gfr_dyn_to_fv_phys_topo_mpi_only
+
   end interface gfr_dyn_to_fv_phys_topo
 
   interface gfr_fv_phys_to_dyn_topo
@@ -481,6 +482,7 @@ contains
     ! added since it's the variance due to truncation of wave numbers at a
     ! separation length scale; this is independent of grid.
 
+
     use parallel_mod, only: parallel_t, abortmp
     use hybrid_mod, only: hybrid_create
 
@@ -705,6 +707,7 @@ contains
     !$omp end parallel
 #endif
   end subroutine gfr_dyn_to_fv_phys_topo_dom_mt
+
 
   subroutine gfr_dyn_to_fv_phys_topo_mpi_only(par, elem, phis)
     ! Wrapper to the hybrid-threading main routine.

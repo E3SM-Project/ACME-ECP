@@ -319,6 +319,22 @@
      </queues>
   </batch_system>
 
+  <batch_system MACH="stampede2-knl" type="slurm" >
+    <batch_submit>ssh stampede2.tacc.utexas.edu cd $CASEROOT ; sbatch</batch_submit>
+    <queues>
+      <queue walltimemax="48:00:00" nodemin="1" nodemax="256" >normal</queue>
+      <queue walltimemax="02:00:00" nodemin="1" nodemax="16" default="true">development</queue>
+    </queues>
+  </batch_system>
+
+  <batch_system MACH="stampede2-knl-liran" type="slurm" >
+    <batch_submit>ssh stampede2.tacc.utexas.edu cd $CASEROOT ; sbatch</batch_submit>
+    <queues>
+      <queue walltimemax="48:00:00" nodemin="1" nodemax="256" >normal</queue>
+      <queue walltimemax="02:00:00" nodemin="1" nodemax="16" default="true">development</queue>
+    </queues>
+  </batch_system>
+
   <batch_system MACH="cori-knl" type="nersc_slurm">
     <directives>
       <directive> --constraint=knl,quad,cache</directive>
