@@ -187,6 +187,8 @@ subroutine crm_physics_register()
   call pbuf_add_field('CRM_PCP',     'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny/),                crm_pcp_idx)
   call pbuf_add_field('CRM_SNW',     'physpkg', dtype_r8, (/pcols,crm_nx, crm_ny/),                crm_snw_idx)
 #endif
+  ! CRM orientation angle needs to persist for MAML (to pass crm info to coupler) and SP_ORIENT_RAND
+  call pbuf_add_field('CRM_ANGLE', 'global', dtype_r8, (/pcols/), idx)
 
 end subroutine crm_physics_register
 
@@ -565,6 +567,10 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    use crm_output_module,      only: crm_output_type, crm_output_initialize, crm_output_finalize
 #endif /* CRM */
    use crm_ecpp_output_module, only: crm_ecpp_output_type
+#ifdef HARDIMABALANCE
+  use spmd_utils,      only: masterproc, iam
+    real(r8) :: clat(pcols), clon(pcols)
+#endif
 
 ! need this for non-SP runs, because otherwise the compiler can't see crm/params.F90
 #ifndef CRM
@@ -676,6 +682,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    real(crm_rknd), parameter        :: pi   = 3.14159265359
    real(crm_rknd), parameter        :: pix2 = 6.28318530718
    real(crm_rknd), dimension(pcols) :: crm_angle
+   integer :: crm_angle_idx
 
    ! CRM types
    type(crm_state_type)  :: crm_state
@@ -714,7 +721,20 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    lchnk = state%lchnk
    ncol  = state%ncol
 
+
    call t_startf ('crm')
+
+#ifdef HARDIMABALANCE
+   call get_rlat_all_p(lchnk, ncol, clat)
+   call get_rlon_all_p(lchnk, ncol, clon)
+   
+   do i=1,ncol
+     if (clat(i)*180./3.14 .ge. 20. .and. clat(i)*180./3.14. .le. 40.) then
+       ! do a bunch of pointless work.
+     endif 
+   end do
+#endif
+
 
    !------------------------------------------------------------------------------------------------
    ! Initialize ptend
@@ -738,15 +758,19 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
    !------------------------------------------------------------------------------------------------
    ! Set CRM orientation angle
    !------------------------------------------------------------------------------------------------
-
+   crm_angle(:) = 0
 #if defined( SP_ORIENT_RAND )
    !------------------------------------------------------------------------------------------------
    ! Rotate the CRM using a random walk
    !------------------------------------------------------------------------------------------------
    if ( (crm_ny.eq.1) .or. (crm_nx.eq.1) ) then
+      crm_angle_idx = pbuf_get_index('CRM_ANGLE')
+      if (.not. is_first_step()) then
+         ! get current crm angle from pbuf, except on first step
+         call pbuf_get_field(pbuf, crm_angle_idx, crm_angle)
+      endif
 
       do i=1,ncol
-
          !!! set the seed based on the chunk and column index (duplicate seeds are ok)
          seed = lchnk + i + nstep
 
@@ -767,9 +791,9 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          if ( crm_angle(i) .gt. pix2 ) then
             crm_angle(i) = crm_angle(i) - pix2
          endif
-
       enddo
-
+      ! write current crm_angle to pbuf
+      call pbuf_set_field(pbuf, crm_angle_idx, crm_angle)
    endif
 #else /* SP_ORIENT_RAND */
    !------------------------------------------------------------------------------------------------
@@ -778,17 +802,12 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
 #if defined( SP_DIR_NS )
     if (crm_ny.eq.1) then
        crm_angle(:ncol) = pi/2.
-    else 
-       crm_angle(:ncol) = 0.
     endif
-#else
-      crm_angle(:ncol) = 0.
 #endif /* SP_DIR_NS */
-
 #endif /* SP_ORIENT_RAND */
 
    !------------------------------------------------------------------------------------------------
-   ! Retreive pbuf fields
+   ! Retrieve pbuf fields
    !------------------------------------------------------------------------------------------------
    if (SPCAM_microp_scheme .eq. 'm2005') then
      call pbuf_get_field(pbuf, pbuf_get_index('CRM_NC_RAD'), crm_rad%nc, start=(/1,1,1,1/), kount=(/pcols,crm_nx_rad, crm_ny_rad, crm_nz/))
@@ -969,7 +988,8 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
          call pbuf_set_field(pbuf, ifld, 0.0_r8, start=(/1,1/), kount=(/pcols, pver/) )
       endif 
 #endif
-
+      ! only need to do this once when crm_angle is static
+      call pbuf_set_field(pbuf, pbuf_get_index('CRM_ANGLE'), crm_angle)
 
    else  ! not is_first_step
 
