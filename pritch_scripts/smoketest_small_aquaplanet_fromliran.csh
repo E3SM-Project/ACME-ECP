@@ -939,16 +939,17 @@ $xmlchange_exe --id DEBUG --val `uppercase $debug_compile`
 # NOTE: The user_nl files need to be set before the build, because case_scripts.build checks whether input files exist.
 # NOTE: $atm_output_freq and $records_per_atm_output_file are so commonly used, that they are set in the options at the top of this script.
 
+# aerodep_flx_datapath = '/scratch/07088/tg863871/E3SM_inputdata/atm/cam/chem/trop_mam/aero'
 cat <<EOF >> user_nl_cam
  nhtfrq =   0,-24,-6,-6
  use_hetfrz_classnuc = .false.
  aerodep_flx_type = 'CYCLICAL'
  phys_loadbalance=  2
- aerodep_flx_datapath = '/scratch/07088/tg863871/E3SM_inputdata/atm/cam/chem/trop_mam/aero'
+ aerodep_flx_datapath = '/work/07088/tg863871/stampede2/inputdata/atm/cam/chem/trop_mam/aero'
  aerodep_flx_file = 'mam4_0.9x1.2_L72_2000clim_c170323.nc'
  aerodep_flx_cycle_yr = 01
  prescribed_aero_type		= 'CYCLICAL'
- prescribed_aero_datapath='/scratch/07088/tg863871/E3SM_inputdata/atm/cam/chem/trop_mam/aero'
+ prescribed_aero_datapath='/work/07088/tg863871/stampede2/inputdata/atm/cam/chem/trop_mam/aero'
  prescribed_aero_file = 'mam4_0.9x1.2_L72_2000clim_c170323.nc'
  prescribed_aero_cycle_yr = 01
  se_fv_phys_remap_alg = 1
