@@ -23,7 +23,7 @@
 ###===================================================================
 
 ### BASIC INFO ABOUT RUN
-set job_name       = Test_nxny2_ref0004_zero5
+set job_name       = STest_nx8_ny1_dx1000_nt5_nz58
 set compset        = F-EAMv1-AQP1
 set resolution     = ne4pg2_ne4pg2
 #set machine        = development

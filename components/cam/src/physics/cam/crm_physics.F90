@@ -1178,7 +1178,7 @@ subroutine crm_physics_tend(ztodt, state, tend, ptend, pbuf, cam_in, cam_out,   
       ! routine call (because we want it to use the clouds simulated from this
       ! CRM call). Thus, comparing this heating rate with CRM_QRS + CRM_QRL
       ! output in radiation_tend will show a time lag.
-      call \('CRM_QRAD', crm_rad%qrad(1:ncol,:,:,:), ncol, lchnk)
+      call outfld('CRM_QRAD', crm_rad%qrad(1:ncol,:,:,:), ncol, lchnk)
 
       ! Convert heating rate to Q*dp to conserve energy across timesteps
       do m=1,crm_nz
